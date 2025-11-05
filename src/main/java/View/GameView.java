@@ -1,0 +1,99 @@
+package View;
+
+import Controller.GameController;
+import com.formdev.flatlaf.FlatLightLaf;
+import org.javatuples.Pair;
+
+import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+import java.awt.*;
+import java.awt.event.ActionListener;
+import java.util.ArrayList;
+import java.util.HashMap;
+
+public class GameView extends JFrame {
+    private final BoardPanel pnlBoard;
+    private final JButton btnEndTurn = new JButton("Finalizar Turno");
+    private final JLabel lblTurn = new JLabel("Turno de: JUGADOR");
+    private static GameView instance;
+
+    public static GameView getInstance(ArrayList<Pair<Integer, Integer>> positions) {
+        if (instance == null) {
+            instance = new GameView(positions);
+        }
+        return instance;
+    }
+
+    public GameView(ArrayList<Pair<Integer, Integer>> positions) {
+        setTitle("Chinese Checkers");
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLayout(new BorderLayout());
+
+        pnlBoard = new BoardPanel(positions);
+        add(pnlBoard, BorderLayout.CENTER);
+
+        // Panel de control
+        JPanel controlPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 40, 10));
+        controlPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
+        controlPanel.setBackground(new Color(0xF5F5F5));
+
+        lblTurn.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        btnEndTurn.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        btnEndTurn.setBackground(new Color(0x6200EE));
+        btnEndTurn.setForeground(Color.WHITE);
+
+        controlPanel.add(lblTurn);
+        controlPanel.add(btnEndTurn);
+        add(controlPanel, BorderLayout.SOUTH);
+
+        pack();
+        setLocationRelativeTo(null);
+        setVisible(true);
+    }
+
+    // Popup de ganador
+    public void showWinnerPopup(String winnerColor) {
+        JOptionPane.showMessageDialog(this, "Ganó " + winnerColor, "Juego Terminado", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    // Actualiza el turno
+    public void updateTurnLabel(String playerName) {
+        this.lblTurn.setText("Turno de: " + playerName);
+    }
+    public void updatePieces(ArrayList<Pair<Integer, Integer>> positions, HashMap<Pair<Integer, Integer>, String> colors) {
+        pnlBoard.updatePieces(positions, colors);
+    }
+
+    // Actualiza celdas seleccionadas y movimientos válidos (solo recibe datos)
+    public void showValidMoves(Pair<Integer, Integer> selectedPos, ArrayList<Pair<Integer, Integer>> validMoves) {
+        pnlBoard.setHighlights(selectedPos, validMoves);
+    }
+
+    // Listener del botón
+    public void addEndTurnListener(ActionListener accion) {
+        btnEndTurn.addActionListener(accion);
+    }
+    public void setCellClickListener(BoardPanel.CellClickListener listener) {
+        pnlBoard.setCellClickListener(listener);
+    }
+
+
+    // Ejemplo de inicialización
+    public static void main(String[] args) {
+        FlatLightLaf.setup();
+
+        GameController controller = new GameController();
+
+        SwingUtilities.invokeLater(() -> {
+            // El controlador calcula y pasa los datos listos para la vista
+            ArrayList<Pair<Integer, Integer>> positions = controller.getBoardPositions();
+            GameView view = new GameView(positions);
+            //controller.getValidMoves();
+
+            //Ejemplo de selección
+            //Pair<Integer, Integer> selected = new Pair<>(0, 0);
+            //ArrayList<Pair<Integer, Integer>> moves = controller.getValidMovePixels();
+            //view.showValidMoves(selected, moves);
+        });
+    }
+}
