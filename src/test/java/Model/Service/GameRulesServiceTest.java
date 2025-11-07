@@ -7,7 +7,6 @@ import org.javatuples.Pair;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -58,7 +57,7 @@ class GameRulesServiceTest {
     }
 
     @Test
-    void validateJump() {
+    void calculateJump() {
         // Given
         String direction = "NE";
         Pair<Integer, Integer> position = new Pair<>(0, 0);
@@ -67,13 +66,13 @@ class GameRulesServiceTest {
         HexCell jumpCell = new HexCell(jump.getValue0(), jump.getValue1(), null);
         jumpCell.setPiece(new Piece("GREEN"));
 
-        when(boardService.move(direction, position.getValue0(), position.getValue1())).thenReturn(step);
-        when(boardService.move(direction, step.getValue0(), step.getValue1())).thenReturn(jump);
+        when(boardService.calculateMove(direction, position.getValue0(), position.getValue1())).thenReturn(step);
+        when(boardService.calculateMove(direction, step.getValue0(), step.getValue1())).thenReturn(jump);
         when(board.contains(jump)).thenReturn(true);
         when(board.getCell(jump.getValue0(), jump.getValue1())).thenReturn(jumpCell);
 
         // When
-        Pair<Integer, Integer> result = gameRulesService.validateJump(direction, position);
+        Pair<Integer, Integer> result = gameRulesService.calculateJump(direction, position);
 
         // Then
         assertEquals(jump, result);

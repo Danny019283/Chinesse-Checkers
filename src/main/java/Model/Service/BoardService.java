@@ -11,6 +11,12 @@ import static java.lang.Math.sqrt;
 
 public class BoardService {
     private static BoardService instance;
+    private final Board board;
+
+    BoardService() {
+        this.board = new Board();
+    }
+
     public static BoardService getInstance() {
         if (instance == null) {
             instance = new BoardService();
@@ -29,28 +35,27 @@ public class BoardService {
 
     public Board createBoard() {
         //create first triangle
-        Board board = new Board();
         String[] directions = {"SW", "E", "NW"};
-        createTriangle(board, directions, 0, 12, 4, -8, null);
+        createTriangle(directions, 0, 12, 4, -8, null);
         //create inverted triangle
         String[] directionsInverted = {"NW", "E", "SW"};
-        createTriangle(board, directionsInverted, 0, 12, -4, 8, null);
+        createTriangle(directionsInverted, 0, 12, -4, 8, null);
         return board;
     }
 
-    public Board createTriangle(Board board, String[] directions, int dirIndex, int stepsMax, int q, int r, Piece piece) {
+    public Board createTriangle(String[] directions, int dirIndex, int stepsMax, int q, int r, Piece piece) {
         if (stepsMax < 0) {
             return board;
         }
         String currentDir = directions[dirIndex];
         if (stepsMax == 12) {
-            Pair<Integer, Integer> newCoord = move(oppositeDirections.get(currentDir), q, r);
+            Pair<Integer, Integer> newCoord = calculateMove(oppositeDirections.get(currentDir), q, r);
             q = newCoord.getValue0();
             r = newCoord.getValue1();
         }
         int stepsCount = 0;
         while (stepsCount <= stepsMax) {
-            Pair<Integer, Integer> newCoord = move(currentDir, q, r);
+            Pair<Integer, Integer> newCoord = calculateMove(currentDir, q, r);
             q = newCoord.getValue0();
             r = newCoord.getValue1();
             if (!board.contains(new Pair<>(q, r))) {
@@ -60,10 +65,10 @@ public class BoardService {
             stepsCount++;
         }
         int nextDirIndex = (dirIndex + 1) % directions.length;
-        return createTriangle(board, directions, nextDirIndex, stepsMax - 1, q, r, null);
+        return createTriangle(directions, nextDirIndex, stepsMax - 1, q, r, null);
     }
 
-    public Pair<Integer, Integer> move(String direction, int q, int r) {
+    public Pair<Integer, Integer> calculateMove(String direction, int q, int r) {
         return switch (direction) {
             case "NW" -> new Pair<>(q, r - 1);
             case "NE" -> new Pair<>(q + 1, r - 1);
@@ -75,11 +80,11 @@ public class BoardService {
         };
     }
 
-    public ArrayList<Pair<String, HexCell>> getNeighbors(Board board, Pair<Integer, Integer> coord) {
+    public ArrayList<Pair<String, HexCell>> getNeighbors(Pair<Integer, Integer> coord) {
         ArrayList<Pair<String, HexCell>> neighbors = new ArrayList<>();
         String[] directions = {"NW", "NE", "E", "SE", "SW", "W"};
         for (String direction : directions) {
-            Pair<Integer, Integer> newCoord = move(direction, coord.getValue0(), coord.getValue1());
+            Pair<Integer, Integer> newCoord = calculateMove(direction, coord.getValue0(), coord.getValue1());
             if (board.contains(newCoord)) {
                 neighbors.add(new Pair<>(
                         direction,
@@ -132,4 +137,117 @@ public class BoardService {
         }
         return new Pair<>(q, r);
     }
+
+    public void calculateInitialCornerForPiece(String[] directions, int dirIndex, int stepsMax, int q, int r, Piece piece) {
+        if (stepsMax < 0) {
+            return;
+        }
+        String currentDir = directions[dirIndex];
+        if (stepsMax == 3) {
+            Pair<Integer, Integer> newCoord = calculateMove(oppositeDirections.get(currentDir), q, r);
+            q = newCoord.getValue0();
+            r = newCoord.getValue1();
+        }
+        int stepsCount = 0;
+        while (stepsCount <= stepsMax) {
+            Pair<Integer, Integer> newCoord = calculateMove(currentDir, q, r);
+            q = newCoord.getValue0();
+            r = newCoord.getValue1();
+            if (board.contains(new Pair<>(q, r))) {
+                board.getCell(q, r).setPiece(piece);
+            }
+            stepsCount++;
+        }
+        int nextDirIndex = (dirIndex + 1) % directions.length;
+        calculateInitialCornerForPiece(directions, nextDirIndex, stepsMax - 1, q, r, piece);
+    }
+
+    public Pair<Integer, Integer> calculateJump(String direction, Pair<Integer, Integer> position) {
+        int q = position.getValue0();
+        int r = position.getValue1();
+        Pair<Integer, Integer> step = calculateMove(direction, q, r);
+        if (step == null) {
+            return null;
+        }
+        HexCell intermediateCell = board.getCell(step.getValue0(), step.getValue1());
+        if (intermediateCell.getPiece() == null) {
+            return null;
+        }
+        Pair<Integer, Integer> destPos = calculateMove(direction, step.getValue0(), step.getValue1());
+        if (!board.contains(destPos)) {
+            return null;
+        }
+        HexCell destCell = board.getCell(destPos.getValue0(), destPos.getValue1());
+        if (destCell.getPiece() != null) {
+            return null;
+        }
+        return new Pair<>(destPos.getValue0(), destPos.getValue1());
+    }
+
+    public Pair<Integer, Integer> getOppositeCorner(String color) {
+        Map <String, Pair<Integer, Integer>> cornerPositions = Map.of(
+                "GREEN", new Pair<>(-4, 8),
+                "BLUE", new Pair<>(4, 4),
+                "PURPLE", new Pair<>(8, -4),
+                "RED", new Pair<>(4, -8),
+                "ORANGE", new Pair<>(-4, -4),
+                "YELLOW", new Pair<>(-8, 4)
+        );
+        return cornerPositions.get(color);
+    }
+
+    public String[] getDirectionsForCorner(int q, int r) {
+        Pair<Integer, Integer> corner = new Pair<>(q, r);
+        Map <Pair<Integer, Integer>, String[]> cornerPositions = Map.of(
+                new Pair<>(4, -8), new String[]{"SW", "E", "NW"},
+                new Pair<>(-4, 8), new String[]{"NW", "E", "SW"},
+                new Pair<>(4, 4), new String[]{"W", "NE", "SE"},
+                new Pair<>(-4, -4), new String[]{"E", "SW", "NW"},
+                new Pair<>(8, -4), new String[]{"W", "SE", "NE"},
+                new Pair<>(-8, 4), new String[]{"E", "NW", "SW"}
+        );
+        return cornerPositions.get(corner);
+    }
+
+    public boolean checkCorner(String color, int q, int r, String[] directions, int dirIndex, int stepsMax) {
+        if (stepsMax < 0) {
+            return true;
+        }
+        String currentDir = directions[dirIndex];
+        if (stepsMax == 12) {
+            Pair<Integer, Integer> newCoord = calculateMove(oppositeDirections.get(currentDir), q, r);
+            q = newCoord.getValue0();
+            r = newCoord.getValue1();
+        }
+        int stepsCount = 0;
+        while (stepsCount <= stepsMax) {
+            if(!board.getCell(q, r).getPiece().getColor().equals(color)) {
+                return false;
+            }
+            stepsCount++;
+        }
+        int nextDirIndex = (dirIndex + 1) % directions.length;
+        return checkCorner(color, q, r, directions, nextDirIndex, stepsMax);
+    }
+
+    public boolean isPlayerPiece(Pair<Integer, Integer> hexCoord, String currenPlayer) {
+        if (!board.contains(hexCoord)) {
+            return false;
+        }
+        if (board.getCell(hexCoord.getValue0(), hexCoord.getValue1()).getPiece() == null) {
+            return false;
+        }
+        Piece piece = board.getCell(hexCoord.getValue0(), hexCoord.getValue1()).getPiece();
+        return piece.getColor().equals(currenPlayer);
+    }
+
+    public boolean isJumpMove(Pair<Integer, Integer> prevPosition, Pair<Integer, Integer> newPosition, String direction) {
+        if(direction == null) {
+            return false;
+        }
+        String oppositeDirection = oppositeDirections.get(direction);
+        Pair<Integer, Integer> jumpBack = calculateJump(oppositeDirection, newPosition);
+        return prevPosition.equals(jumpBack);
+    }
+
 }

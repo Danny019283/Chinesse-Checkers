@@ -43,9 +43,9 @@ class BoardServiceTest {
     }
 
     @Test
-    void move() {
+    void calculateMove() {
         // When
-        Pair<Integer, Integer> result = boardService.move("NE", 0, 0);
+        Pair<Integer, Integer> result = boardService.calculateMove("NE", 0, 0);
 
         // Then
         assertEquals(new Pair<>(1, -1), result);

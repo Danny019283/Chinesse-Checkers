@@ -32,7 +32,6 @@ class BoardPanel extends JPanel {
         setPreferredSize(new Dimension(PANEL_WIDTH, PANEL_HEIGHT));
     }
 
-    /** Recibe coordenadas (no objetos del modelo) para actualizar la vista */
     public void setHighlights(Pair<Integer, Integer> selectedCell, ArrayList<Pair<Integer, Integer>> validMoves) {
         this.selectedCell = selectedCell;
         this.validMoves = (validMoves != null) ? validMoves : new ArrayList<>();

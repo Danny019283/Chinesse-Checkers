@@ -1,9 +1,6 @@
 package View;
 
-import Controller.GameController;
-import com.formdev.flatlaf.FlatLightLaf;
 import org.javatuples.Pair;
-
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
@@ -75,25 +72,5 @@ public class GameView extends JFrame {
     }
     public void setCellClickListener(BoardPanel.CellClickListener listener) {
         pnlBoard.setCellClickListener(listener);
-    }
-
-
-    // Ejemplo de inicialización
-    public static void main(String[] args) {
-        FlatLightLaf.setup();
-
-        GameController controller = new GameController();
-
-        SwingUtilities.invokeLater(() -> {
-            // El controlador calcula y pasa los datos listos para la vista
-            ArrayList<Pair<Integer, Integer>> positions = controller.getBoardPositions();
-            GameView view = new GameView(positions);
-            //controller.getValidMoves();
-
-            //Ejemplo de selección
-            //Pair<Integer, Integer> selected = new Pair<>(0, 0);
-            //ArrayList<Pair<Integer, Integer>> moves = controller.getValidMovePixels();
-            //view.showValidMoves(selected, moves);
-        });
     }
 }
