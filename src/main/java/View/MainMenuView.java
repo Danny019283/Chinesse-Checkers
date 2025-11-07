@@ -12,7 +12,6 @@ public class MainMenuView extends JFrame {
     private final JTextField txtPort = new JTextField(6);
     private static MainMenuView instance;
 
-    // Configuración fácil de ajustar
     private final Dimension buttonSize = new Dimension(300, 60);
     private final Font buttonFont = new Font("Segoe UI", Font.BOLD, 14);
     private final Font titleFont = new Font("Segoe UI", Font.BOLD, 40);
@@ -30,12 +29,11 @@ public class MainMenuView extends JFrame {
         setLayout(new BorderLayout());
         setResizable(false);
 
-        // Panel principal con padding
         JPanel mainPanel = new JPanel(new BorderLayout());
         mainPanel.setBorder(new EmptyBorder(80, 80, 80, 80));
         mainPanel.setBackground(new Color(0xF5F5F5));
 
-        // Panel del título
+        // title panel
         JPanel titlePanel = new JPanel();
         titlePanel.setBackground(new Color(0xF5F5F5));
         JLabel lblTitle = new JLabel("CHINESE CHECKERS");
@@ -43,11 +41,11 @@ public class MainMenuView extends JFrame {
         lblTitle.setForeground(new Color(0x6200EE));
         titlePanel.add(lblTitle);
 
-        // Panel central con botones
+        // center panel
         JPanel centerPanel = new JPanel(new BorderLayout());
         centerPanel.setBackground(new Color(0xF5F5F5));
 
-        // Panel de botones principales
+        // buttons panel
         JPanel buttonPanel = new JPanel(new GridBagLayout());
         buttonPanel.setBorder(new EmptyBorder(40, 0, 40, 0));
         buttonPanel.setBackground(new Color(0xF5F5F5));
@@ -57,14 +55,12 @@ public class MainMenuView extends JFrame {
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.insets = new Insets(10, 0, 10, 0);
 
-        // Configurar botones (rectangulares y atractivos)
         configureButton(btnStartGame);
         configureButton(btnViewStats);
-
         buttonPanel.add(btnStartGame, gbc);
         buttonPanel.add(btnViewStats, gbc);
 
-        // Panel de configuración de servidor
+        // server configuration panel
         JPanel serverPanel = new JPanel();
         serverPanel.setLayout(new BoxLayout(serverPanel, BoxLayout.Y_AXIS));
         serverPanel.setBorder(BorderFactory.createCompoundBorder(
@@ -77,7 +73,7 @@ public class MainMenuView extends JFrame {
         serverPanel.setBackground(new Color(0xF5F5F5));
         serverPanel.setPreferredSize(new Dimension(250, 120));
 
-        // Fuente para los títulos
+        // title font
         Font labelFont = new Font("Segoe UI", Font.BOLD, 12);
 
         JPanel ipPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 8));
@@ -105,22 +101,17 @@ public class MainMenuView extends JFrame {
         serverPanel.add(ipPanel);
         serverPanel.add(portPanel);
 
-        // Ensamblar la interfaz
         centerPanel.add(buttonPanel, BorderLayout.CENTER);
         centerPanel.add(serverPanel, BorderLayout.EAST);
-
         mainPanel.add(titlePanel, BorderLayout.NORTH);
         mainPanel.add(centerPanel, BorderLayout.CENTER);
-
         add(mainPanel);
 
-        // Establecer tamaño 800x700
         setSize(800, 550);
         setLocationRelativeTo(null);
         setVisible(true);
     }
 
-    // Método para configurar botones de manera consistente
     private void configureButton(JButton button) {
         button.setFont(buttonFont);
         button.setBackground(new Color(0x6200EE));
@@ -135,7 +126,7 @@ public class MainMenuView extends JFrame {
         ));
         button.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
-        // Efecto hover simple
+        // hover effect
         button.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseEntered(java.awt.event.MouseEvent evt) {
                 button.setBackground(new Color(0x3700B3));
@@ -146,7 +137,7 @@ public class MainMenuView extends JFrame {
         });
     }
 
-    // Métodos para obtener los datos del servidor
+    // getters
     public String getServerIP() {
         return txtIP.getText().trim();
     }
@@ -159,7 +150,7 @@ public class MainMenuView extends JFrame {
         }
     }
 
-    // Métodos para agregar listeners (mismo patrón que la referencia)
+    // listeners
     public void addStartGameListener(ActionListener accion) {
         btnStartGame.addActionListener(accion);
     }
@@ -168,40 +159,31 @@ public class MainMenuView extends JFrame {
         btnViewStats.addActionListener(accion);
     }
 
-    // Método para mostrar mensajes de error/éxito
+    // Joptions
     public void showMessage(String message, String title, int messageType) {
         JOptionPane.showMessageDialog(this, message, title, messageType);
     }
 
-    // Método para limpiar campos
+    // functions
     public void clearFields() {
         txtIP.setText("localhost");
         txtPort.setText("8080");
     }
 
-    // Método para cerrar el menú
     public void closeMenu() {
         dispose();
         instance = null;
     }
 
-    // Método estático para probar la vista
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
             MainMenuView menu = new MainMenuView();
-
-            // Ejemplo de cómo ajustar el tamaño fácilmente
-            // menu.setButtonSize(180, 35); // Para botones más pequeños
-            // menu.setButtonSize(220, 45); // Para botones más grandes
-
-            // Ejemplo de uso de listeners
             menu.addStartGameListener(e -> {
                 String ip = menu.getServerIP();
                 int port = menu.getServerPort();
                 menu.showMessage("Conectando a " + ip + ":" + port, "Iniciando Juego", JOptionPane.INFORMATION_MESSAGE);
                 menu.closeMenu();
             });
-
             menu.addViewStatsListener(e -> {
                 menu.showMessage("Funcionalidad de estadísticas en desarrollo", "Estadísticas", JOptionPane.INFORMATION_MESSAGE);
             });
