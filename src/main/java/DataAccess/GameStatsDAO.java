@@ -28,6 +28,7 @@ public class GameStatsDAO extends OracleConnection {
     private static final String DELETE_GAME_STAT = "{call delete_game_stat(?)}";
     private static final String FIND_GAME_STAT = "{?=call find_game_stat(?)}";
     private static final String FIND_ALL_GAME_STATS = "{?=call find_all_game_stats()}";
+    private static final String COUNT_GAME_STATS = "{?=call count_game_stats()}";
 
     public void insertGameStat(GameStats gameStat) throws GlobalException, NoDataException {
         connect();
@@ -37,8 +38,10 @@ public class GameStatsDAO extends OracleConnection {
             cst.setInt(1, gameStat.getGameId());
             cst.setString(2, gameStat.getWinner());
             cst.setString(3, gameStat.getWinnerColor());
-            Array array = connection.createArrayOf("STRING_ARRAY", gameStat.getNamePlayers());
+            ArrayDescriptor descriptor = ArrayDescriptor.createDescriptor("STRING_ARRAY", connection);
+            ARRAY array = new ARRAY(descriptor, connection, gameStat.getNamePlayers());
             cst.setArray(4, array);
+            cst.registerOutParameter(5, java.sql.Types.VARCHAR);
             boolean result = cst.execute();
             if (result) {
                 throw new NoDataException("Insertion did not complete");
@@ -66,8 +69,10 @@ public class GameStatsDAO extends OracleConnection {
             cst.setInt(1, gameStat.getGameId());
             cst.setString(2, gameStat.getWinner());
             cst.setString(3, gameStat.getWinnerColor());
-            Array array = connection.createArrayOf("STRING_ARRAY", gameStat.getNamePlayers());
+            ArrayDescriptor descriptor = ArrayDescriptor.createDescriptor("STRING_ARRAY", connection);
+            ARRAY array = new ARRAY(descriptor, connection, gameStat.getNamePlayers());
             cst.setArray(4, array);
+            cst.registerOutParameter(5, java.sql.Types.VARCHAR);
             int result = cst.executeUpdate();
             if (result == 0) {
                 throw new NoDataException("Update did not complete");
@@ -197,5 +202,33 @@ public class GameStatsDAO extends OracleConnection {
             throw new NoDataException("No data");
         }
         return collection;
+    }
+
+    public int countGameStats() throws GlobalException, NoDataException {
+        connect();
+        CallableStatement cst = null;
+        int count = 0;
+        try {
+            cst = connection.prepareCall(COUNT_GAME_STATS);
+            cst.registerOutParameter(1, OracleTypes.INTEGER);
+            cst.execute();
+            count = cst.getInt(1);
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new GlobalException("Invalid statement or function call");
+        } finally {
+            try {
+                if (cst != null) {
+                    cst.close();
+                }
+                disconnect();
+            } catch (SQLException e) {
+                throw new GlobalException("Invalid or null statements");
+            }
+        }
+        if (count == 0) {
+            throw new NoDataException("No records found");
+        }
+        return count;
     }
 }

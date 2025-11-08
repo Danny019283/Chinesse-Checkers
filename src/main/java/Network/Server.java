@@ -59,21 +59,27 @@ public class Server {
         if (action instanceof Pair) {
             gameController.handleCellClick((Pair<Integer, Integer>) action);
         } else if (action.equals("END_TURN")) {
-            gameController.endTurn(true);
+            gameController.endTurn(gameController.isJumpSequence());
         }
         broadcastState();
     }
 
-    synchronized void addPlayerToGame(ClientHandler client) {
+    synchronized void broadcastMessage(Object message) {
+        for (ClientHandler client : clients) {
+            client.sendMessage(message);
+        }
+    }
+
+    synchronized void addPlayerToGame(ClientHandler client, String playerName) {
         if (gameStarted) {
             // Game already in progress, maybe add as spectator in the future
             return;
         }
-        gameController.addPlayer(new Player("Player " + (clients.size()), null));
-        System.out.println("Player added. Total players: " + gameController.getPlayers().size());
+        client.setPlayerName(playerName);
+        gameController.addPlayer(new Player(playerName, null));
+        System.out.println(playerName + " added. Total players: " + gameController.getPlayers().size());
 
         // Start the game when 2 players have joined.
-        // This can be changed to a "start game" button in a lobby.
         if (gameController.getPlayers().size() == 2) {
             System.out.println("Two players have joined. Starting game.");
             gameController.startGame();
@@ -91,10 +97,15 @@ public class Server {
         private final Server server;
         private ObjectOutputStream oos;
         private ObjectInputStream ois;
+        private String playerName;
 
         public ClientHandler(Socket socket, Server server) {
             this.socket = socket;
             this.server = server;
+        }
+
+        public void setPlayerName(String playerName) {
+            this.playerName = playerName;
         }
 
         @Override
@@ -103,11 +114,15 @@ public class Server {
                 oos = new ObjectOutputStream(socket.getOutputStream());
                 ois = new ObjectInputStream(socket.getInputStream());
 
-                // First, send the board layout
-                oos.writeObject(server.gameController.getBoardPositions());
+                // First, read the player's name
+                String name = (String) ois.readObject();
+                this.playerName = name;
 
-                // Add player to the game
-                server.addPlayerToGame(this);
+                // Add player to the game with the received name
+                server.addPlayerToGame(this, this.playerName);
+
+                // Then, send the board layout
+                oos.writeObject(server.gameController.getBoardPositions());
 
                 // Main loop for receiving actions from the client
                 while (true) {
@@ -115,10 +130,13 @@ public class Server {
                     server.handleAction(action, this);
                 }
             } catch (IOException | ClassNotFoundException e) {
-                System.out.println("Client " + socket.getInetAddress() + " disconnected.");
+                System.out.println("Client " + playerName + " (" + socket.getInetAddress() + ") disconnected.");
             } finally {
                 clients.remove(this);
-                // Handle player disconnection during a game if necessary
+                // Notify remaining clients that a player has disconnected
+                if (gameStarted) {
+                    server.broadcastMessage(new ServerMessage(ServerMessage.MessageType.PLAYER_DISCONNECTED, playerName + " has left the game. The game has ended."));
+                }
                 try {
                     socket.close();
                 } catch (IOException e) {
@@ -133,6 +151,15 @@ public class Server {
                 oos.reset(); // Use reset to prevent caching of the GameState object
             } catch (IOException e) {
                 System.out.println("Error sending state to client " + socket.getInetAddress());
+            }
+        }
+
+        public void sendMessage(Object message) {
+            try {
+                oos.writeObject(message);
+                oos.reset();
+            } catch (IOException e) {
+                System.out.println("Error sending message to client " + socket.getInetAddress());
             }
         }
     }

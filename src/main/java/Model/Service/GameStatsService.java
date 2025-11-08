@@ -50,9 +50,4 @@ public class GameStatsService {
         return gameStatsDAO.findAllGameStats();
     }
 
-    public int getGameId() {
-        return 0;//llama a la funcion en la BD que devuelve el tamaño
-    }
-
-
 }

@@ -14,7 +14,13 @@ class BoardPanel extends JPanel {
     private final int PANEL_HEIGHT = 700;
 
     private CellClickListener cellClickListener;
-    private final ArrayList<Pair<Integer, Integer>> boardPositions;
+    private ArrayList<Pair<Integer, Integer>> boardPositions;
+
+    public void setHexagonPositions(ArrayList<Pair<Integer, Integer>> positions) {
+        this.boardPositions.clear();
+        this.boardPositions.addAll(positions);
+        repaint(); // Repaint the board after updating positions
+    }
     private Pair<Integer, Integer> selectedCell = null;
     private ArrayList<Pair<Integer, Integer>> validMoves = new ArrayList<>();
     private ArrayList<Pair<Integer, Integer>> piecePositions = new ArrayList<>();

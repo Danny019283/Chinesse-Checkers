@@ -72,7 +72,15 @@ public class GameView extends JFrame {
     public void addEndTurnListener(ActionListener accion) {
         btnEndTurn.addActionListener(accion);
     }
+    public void setEndTurnButtonEnabled(boolean enabled) {
+        btnEndTurn.setEnabled(enabled);
+    }
+
     public void setCellClickListener(BoardPanel.CellClickListener listener) {
         pnlBoard.setCellClickListener(listener);
+    }
+
+    public void setHexagonPositions(ArrayList<Pair<Integer, Integer>> positions) {
+        pnlBoard.setHexagonPositions(positions);
     }
 }

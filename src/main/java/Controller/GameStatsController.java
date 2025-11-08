@@ -1,5 +1,6 @@
 package Controller;
 
+import DataAccess.Exceptions.NoDataException;
 import Model.Entities.GameStats;
 import Model.Service.GameStatsService;
 import View.GameStatsView;
@@ -63,11 +64,10 @@ public class GameStatsController {
     public void loadAllStats() {
         try {
             ArrayList<GameStats> allStats = serviceGameStats.findAllStats();
-            if (allStats != null && !allStats.isEmpty()) {
-                statsView.updateTable(allStats);
-            } else {
-                statsView.showMessage("No hay estadísticas de juegos disponibles", "Información", JOptionPane.INFORMATION_MESSAGE);
-            }
+            statsView.updateTable(allStats);
+        } catch (NoDataException e) {
+            statsView.updateTable(new ArrayList<>()); // Clear the table
+            statsView.showMessage("No hay estadísticas de juegos disponibles.", "Información", JOptionPane.INFORMATION_MESSAGE);
         } catch (Exception e) {
             statsView.showMessage("Error al cargar las estadísticas: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }

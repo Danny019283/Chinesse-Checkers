@@ -8,6 +8,7 @@ import java.awt.event.ActionListener;
 public class MainMenuView extends JFrame {
     private final JButton btnStartGame = new JButton("Iniciar Juego");
     private final JButton btnViewStats = new JButton("Ver Estadísticas");
+    private final JTextField txtName = new JTextField(15);
     private final JTextField txtIP = new JTextField(15);
     private final JTextField txtPort = new JTextField(6);
     private static MainMenuView instance;
@@ -72,15 +73,25 @@ public class MainMenuView extends JFrame {
         serverPanel.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createTitledBorder(
                         BorderFactory.createLineBorder(new Color(0x6200EE), 1),
-                        "Configuración del Servidor"
+                        "Configuración de Partida"
                 ),
                 BorderFactory.createEmptyBorder(15, 15, 15, 15)
         ));
         serverPanel.setBackground(new Color(0xF5F5F5));
-        serverPanel.setPreferredSize(new Dimension(250, 120));
+        serverPanel.setPreferredSize(new Dimension(250, 150));
 
         // title font
         Font labelFont = new Font("Segoe UI", Font.BOLD, 12);
+
+        JPanel namePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 8));
+        namePanel.setBackground(new Color(0xF5F5F5));
+        JLabel lblName = new JLabel("Tu Nombre:");
+        lblName.setFont(labelFont);
+        lblName.setForeground(Color.BLACK);
+        txtName.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        txtName.setPreferredSize(new Dimension(120, 25));
+        namePanel.add(lblName);
+        namePanel.add(txtName);
 
         JPanel ipPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 8));
         ipPanel.setBackground(new Color(0xF5F5F5));
@@ -99,11 +110,12 @@ public class MainMenuView extends JFrame {
         lblPort.setFont(labelFont);
         lblPort.setForeground(Color.BLACK);
         txtPort.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        txtPort.setText("8080");
+        txtPort.setText("12345");
         txtPort.setPreferredSize(new Dimension(80, 25));
         portPanel.add(lblPort);
         portPanel.add(txtPort);
 
+        serverPanel.add(namePanel);
         serverPanel.add(ipPanel);
         serverPanel.add(portPanel);
 
@@ -140,6 +152,10 @@ public class MainMenuView extends JFrame {
     }
 
     // getters
+    public String getPlayerName() {
+        return txtName.getText().trim();
+    }
+
     public String getServerIP() {
         return txtIP.getText().trim();
     }
