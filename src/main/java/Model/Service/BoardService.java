@@ -138,12 +138,13 @@ public class BoardService {
         return new Pair<>(q, r);
     }
 
-    public void calculateInitialCornerForPiece(String[] directions, int dirIndex, int stepsMax, int q, int r, Piece piece) {
+    public ArrayList<HexCell> calculateCornerCells(ArrayList<HexCell> cornerCells, String[] directions,
+                                                   int dirIndex, int stepsMax, int q, int r, boolean firstLap) {
         if (stepsMax < 0) {
-            return;
+            return cornerCells;
         }
         String currentDir = directions[dirIndex];
-        if (stepsMax == 3) {
+        if (firstLap) {
             Pair<Integer, Integer> newCoord = calculateMove(oppositeDirections.get(currentDir), q, r);
             q = newCoord.getValue0();
             r = newCoord.getValue1();
@@ -154,12 +155,12 @@ public class BoardService {
             q = newCoord.getValue0();
             r = newCoord.getValue1();
             if (board.contains(new Pair<>(q, r))) {
-                board.getCell(q, r).setPiece(piece);
+                cornerCells.add(board.getCell(q, r));
             }
             stepsCount++;
         }
         int nextDirIndex = (dirIndex + 1) % directions.length;
-        calculateInitialCornerForPiece(directions, nextDirIndex, stepsMax - 1, q, r, piece);
+        return calculateCornerCells(cornerCells, directions, nextDirIndex, stepsMax - 1, q, r, false);
     }
 
     public Pair<Integer, Integer> calculateJump(String direction, Pair<Integer, Integer> position) {
@@ -170,6 +171,9 @@ public class BoardService {
             return null;
         }
         HexCell intermediateCell = board.getCell(step.getValue0(), step.getValue1());
+        if (intermediateCell == null) {
+            return null;
+        }
         if (intermediateCell.getPiece() == null) {
             return null;
         }
@@ -209,25 +213,19 @@ public class BoardService {
         return cornerPositions.get(corner);
     }
 
-    public boolean checkCorner(String color, int q, int r, String[] directions, int dirIndex, int stepsMax) {
-        if (stepsMax < 0) {
-            return true;
-        }
-        String currentDir = directions[dirIndex];
-        if (stepsMax == 12) {
-            Pair<Integer, Integer> newCoord = calculateMove(oppositeDirections.get(currentDir), q, r);
-            q = newCoord.getValue0();
-            r = newCoord.getValue1();
-        }
-        int stepsCount = 0;
-        while (stepsCount <= stepsMax) {
-            if(!board.getCell(q, r).getPiece().getColor().equals(color)) {
+    public boolean checkOppositeCorner(String color, String[] directions, int q , int r) {
+        ArrayList<HexCell> initialCells = calculateCornerCells(
+                new ArrayList<>(), directions, 0, 3, q, r, true);
+        for (HexCell cell : initialCells) {
+            Piece piece = cell.getPiece();
+            if (piece == null) {
                 return false;
             }
-            stepsCount++;
+            if(!piece.getColor().equals(color)) {
+                return false;
+            }
         }
-        int nextDirIndex = (dirIndex + 1) % directions.length;
-        return checkCorner(color, q, r, directions, nextDirIndex, stepsMax);
+        return true;
     }
 
     public boolean isPlayerPiece(Pair<Integer, Integer> hexCoord, String currenPlayer) {

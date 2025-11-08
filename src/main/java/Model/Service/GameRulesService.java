@@ -43,7 +43,7 @@ public class GameRulesService {
                 directions = new String[]{"E", "NW", "SW"};
                 break;
             }
-            case "RED" : {
+            case "RED": {
                 q = -4; r = 8;
                 directions = new String[]{"NW", "E", "SW"};
                 break;
@@ -62,8 +62,12 @@ public class GameRulesService {
                 throw new IllegalArgumentException("Invalid color: " + color);
             }
         }
+        ArrayList<HexCell> initialCells = boardService.calculateCornerCells(
+                new ArrayList<>(), directions, 0, 3, q, r, true);
         Piece piece = new Piece(color);
-        boardService.calculateInitialCornerForPiece(directions, 0, 3, q, r, piece);
+        for (HexCell cell : initialCells) {
+            cell.setPiece(piece);
+        }
     }
 
     public boolean validateNumOfPlayers(int maxPlayers, int connectedPlayers) {
@@ -92,21 +96,19 @@ public class GameRulesService {
         return validMoves;
     }
 
-    public String won(String color) {
-        Pair<Integer, Integer> oppositeCorner = boardService.getOppositeCorner(color);
+    public boolean won(String playerColor) {
+        Pair<Integer, Integer> oppositeCorner = boardService.getOppositeCorner(playerColor);
         int q = oppositeCorner.getValue0();
         int r = oppositeCorner.getValue1();
-        if (board.getCell(q, r).getPiece() == null) {
-            return null;
+        Piece pieceInOppositeCorner = board.getCell(q, r).getPiece();
+        if (pieceInOppositeCorner == null) {
+            return false;
         }
-        if (!board.getCell(q, r).getPiece().getColor().equals(color)) {
-            return null;
+        if (!pieceInOppositeCorner.getColor().equals(playerColor)) {
+            return false;
         }
-        String[] directionesForCorner = boardService.getDirectionsForCorner(q, r);
-        if (!boardService.checkCorner(color, q, r, directionesForCorner, 0, 3)) {
-            return null;
-        }
-        return color;
+        String[] directionsForCorner = boardService.getDirectionsForCorner(q, r);
+        return boardService.checkOppositeCorner(playerColor, directionsForCorner, q, r);
     }
 
     public void movePiece(Pair<Integer, Integer> from, Pair<Integer, Integer> to) {

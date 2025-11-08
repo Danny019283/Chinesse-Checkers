@@ -28,7 +28,13 @@ public class MainMenuView extends JFrame {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new BorderLayout());
         setResizable(false);
+        buildUI();
+        setSize(800, 550);
+        setLocationRelativeTo(null);
+        setVisible(true);
+    }
 
+    public void buildUI() {
         JPanel mainPanel = new JPanel(new BorderLayout());
         mainPanel.setBorder(new EmptyBorder(80, 80, 80, 80));
         mainPanel.setBackground(new Color(0xF5F5F5));
@@ -106,10 +112,6 @@ public class MainMenuView extends JFrame {
         mainPanel.add(titlePanel, BorderLayout.NORTH);
         mainPanel.add(centerPanel, BorderLayout.CENTER);
         add(mainPanel);
-
-        setSize(800, 550);
-        setLocationRelativeTo(null);
-        setVisible(true);
     }
 
     private void configureButton(JButton button) {

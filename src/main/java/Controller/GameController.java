@@ -30,12 +30,20 @@ public class GameController {
         this.gameRulesService = GameRulesService.getInstance(board, boardService);
         this.gameView = GameView.getInstance(getBoardPositions());
 
-        setInitializeGame();
+        updateView();
         setupEventListeners();
     }
 
     public String getCurrentPlayer() {
         return players.get(currentTurnIndex).getColor();
+    }
+
+    public String[] getNamePlayers() {
+        String[] names = new String[players.size()];
+        for (int i = 0; i > players.size(); i++) {
+            names[i] = players.get(i).getName();
+        }
+        return names;
     }
 
     public void addPlayer(Player player) {
@@ -44,7 +52,9 @@ public class GameController {
         if (players.contains(player) && maxPlayers > currentPlayers) {
             return;
         }
-        player.setColor(addColor.get(currentPlayers));
+        String color = addColor.get(currentPlayers);
+        player.setColor(color);
+        gameRulesService.setInitialPieces(color);
         players.add(player);
     }
 
@@ -61,16 +71,6 @@ public class GameController {
         currentTurnIndex = (currentTurnIndex + 1) % players.size();
     }
 
-    private void setInitializeGame() {
-        gameRulesService.setInitialPieces("RED");
-        gameRulesService.setInitialPieces("GREEN");
-        /*gameRulesService.setInitialPieces("BLUE");
-        gameRulesService.setInitialPieces("YELLOW");
-        gameRulesService.setInitialPieces("PURPLE");
-        gameRulesService.setInitialPieces("ORANGE");*/
-        updateView();
-    }
-
     private void handleCellClick(Pair<Integer, Integer> pixelPos) {
         Pair<Integer, Integer> selectedCell = boardService.pixelToPointyHex(pixelPos);
         if (!board.contains(selectedCell)) {
@@ -80,7 +80,6 @@ public class GameController {
         handleTurnClick( selectedCell);
     }
 
-    //controller
     private void handleTurnClick(Pair<Integer, Integer> selectedCell) {
         if (currentPiece != null) {
             if (!currentValidMoves.containsKey(selectedCell) && !isJumpSequence) {
@@ -90,13 +89,12 @@ public class GameController {
             setLastMoveDirection(selectedCell);
             if (currentValidMoves.containsKey(selectedCell)) {
                 gameRulesService.movePiece(this.currentPiece, selectedCell);
-
+                checkWinner();
                 isJumpSequence = setJumpSequence(selectedCell);
                 this.currentPiece = selectedCell;
                 if (!isJumpSequence) {
-                    endTurn();
+                    endTurn(true);
                 }
-                checkWinner();
                 updateView();
             }
         }
@@ -133,31 +131,23 @@ public class GameController {
         updateView();
     }
 
-    private void setupEventListeners() {
-        gameView.setCellClickListener(pos -> {
-            handleCellClick(pos);
-        });
-        gameView.addEndTurnListener(e -> endTurn());
-    }
-
-    //GameRulesService
     private void checkWinner() {
-        String winner = gameRulesService.won(getCurrentPlayer());
-        if (winner != null) {
-            gameView.showWinnerPopup(winner);
+        if (gameRulesService.won(getCurrentPlayer())) {
+            updateView();
+            gameView.showWinnerPopup(getCurrentPlayer());
         }
     }
 
-    //GameRulesService
-    private void endTurn() {
+    private void endTurn(boolean canEndTurn) {
         // Rotar jugadores
-        nextTurn();
-        resetSelection();
-        gameView.updateTurnLabel(getCurrentPlayer());
-        updateView();
+        if (canEndTurn) {
+            nextTurn();
+            resetSelection();
+            gameView.updateTurnLabel(getCurrentPlayer());
+            updateView();
+        }
     }
 
-    //GameRulesService
     private void resetSelection() {
         this.currentPiece = null;
         this.currentValidMoves.clear();
@@ -165,10 +155,7 @@ public class GameController {
         updateView();
     }
 
-
-
     private void updateView() {
-        // Obtener todas las piezas del tablero
         ArrayList<Pair<Integer, Integer>> piecePositions = new ArrayList<>();
         HashMap<Pair<Integer, Integer>, String> pieceColors = new HashMap<>();
 
@@ -181,7 +168,6 @@ public class GameController {
         }
         gameView.updatePieces(piecePositions, pieceColors);
 
-        // Actualizar movimientos válidos y selección
         Pair<Integer, Integer> selectedPixel = null;
         if (currentPiece != null) {
             HexCell selectedHexCell = board.getCell(currentPiece.getValue0(), currentPiece.getValue1());
@@ -218,6 +204,11 @@ public class GameController {
         addPlayer(player2);
         gameView.updateTurnLabel(getCurrentPlayer());
         updateView();
+    }
+
+    private void setupEventListeners() {
+        gameView.setCellClickListener(this::handleCellClick);
+        gameView.addEndTurnListener(e -> endTurn(isJumpSequence));
     }
 
     public static void main(String[] args) {

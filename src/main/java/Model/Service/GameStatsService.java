@@ -49,4 +49,10 @@ public class GameStatsService {
     public ArrayList<GameStats> findAllStats() {
         return gameStatsDAO.findAllGameStats();
     }
+
+    public int getGameId() {
+        return 0;//llama a la funcion en la BD que devuelve el tamaño
+    }
+
+
 }

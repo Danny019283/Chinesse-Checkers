@@ -9,7 +9,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 public class GameView extends JFrame {
-    private final BoardPanel pnlBoard;
+    private BoardPanel pnlBoard;
     private final JButton btnEndTurn = new JButton("Finalizar Turno");
     private final JLabel lblTurn = new JLabel("Turno de: JUGADOR");
     private static GameView instance;
@@ -25,7 +25,13 @@ public class GameView extends JFrame {
         setTitle("Chinese Checkers");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new BorderLayout());
+        buildUI(positions);
+        pack();
+        setLocationRelativeTo(null);
+        setVisible(true);
+    }
 
+    public void buildUI(ArrayList<Pair<Integer, Integer>> positions) {
         pnlBoard = new BoardPanel(positions);
         add(pnlBoard, BorderLayout.CENTER);
 
@@ -42,10 +48,6 @@ public class GameView extends JFrame {
         controlPanel.add(lblTurn);
         controlPanel.add(btnEndTurn);
         add(controlPanel, BorderLayout.SOUTH);
-
-        pack();
-        setLocationRelativeTo(null);
-        setVisible(true);
     }
 
     // Popup de ganador
