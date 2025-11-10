@@ -19,6 +19,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+/*
+* Danny Jafet Alfaro Sánchez
+* Universidad Nacional de Costa Rica
+* 11/11/2025
+* Crear un juego de Damas Chinas multijugador en red usando socket e hilos
+*/
+
+/**
+ * La clase Server es el punto central de la red para el juego. Se encarga de
+ * aceptar conexiones de clientes, gestionar una lista de manejadores de clientes
+ * (ClientHandler) y orquestar el flujo del juego. Implementa GameStateUpdateCallback
+ * para ser notificado por el GameController cada vez que el estado del juego cambia.
+ */
 public class Server implements GameController.GameStateUpdateCallback {
 
     private final GameController gameController;
@@ -26,6 +39,11 @@ public class Server implements GameController.GameStateUpdateCallback {
     private final List<ClientHandler> clients = new CopyOnWriteArrayList<>();
     private final Gson gson;
 
+    /**
+     * Inicia el servidor en un puerto específico, escuchando conexiones entrantes.
+     * Para cada nueva conexión, crea y ejecuta un nuevo ClientHandler en un hilo separado.
+     * @param port El puerto en el que el servidor escuchará.
+     */
     public Server(int port) {
         this.gameController = new GameController();
         this.gameController.setUpdateCallback(this);
@@ -47,18 +65,28 @@ public class Server implements GameController.GameStateUpdateCallback {
         }
     }
 
+    /**
+     * Método de callback que se invoca cuando el GameController notifica un cambio
+     * en el estado del juego. Su única función es iniciar la difusión del nuevo estado.
+     */
     @Override
     public void onStateUpdated() {
         System.out.println("Server received state update. Broadcasting to clients...");
         broadcastGameState();
     }
 
+    /**
+     * Difunde el estado actual del juego a todos los clientes conectados.
+     * Obtiene el DTO del GameController, lo serializa a JSON y lo envía.
+     * Si hay un ganador, también guarda las estadísticas del juego.
+     */
     private synchronized void broadcastGameState() {
         GameStateDTO gameStateDTO = gameController.getGameViewDTO();
         if (gameStateDTO == null) {
             System.err.println("Cannot broadcast a null game state.");
             return;
         }
+        // Si hay un ganador, guarda las estadísticas.
         if (gameStateDTO.getWinnerName() != null && !gameStateDTO.getWinnerName().isEmpty()) {
             String[] players = gameStateDTO.getPlayers().stream().map(Player::getName).toArray(String[]::new);
             statsController.addStatsGame(
@@ -75,16 +103,24 @@ public class Server implements GameController.GameStateUpdateCallback {
         System.out.println("Broadcasted game state to " + clients.size() + " clients.");
     }
 
+    /**
+     * Procesa un mensaje recibido de un cliente. Valida que el mensaje provenga
+     * del jugador que tiene el turno actual antes de pasarlo al GameController.
+     * @param messageJson El mensaje en formato JSON o texto simple.
+     * @param source El ClientHandler que originó el mensaje.
+     */
     private synchronized void handleClientMessage(String messageJson, ClientHandler source) {
         Player sender = source.getPlayer();
         Player currentPlayer = gameController.getCurrentPlayer();
 
+        // Ignora la acción si no es del jugador correcto o la partida no ha empezado.
         if (sender == null || !sender.equals(currentPlayer)) {
             System.out.println("Action from wrong player or game not ready. Action ignored.");
             return;
         }
 
         try {
+            // Procesa el fin de turno o un clic en el tablero.
             if ("END_TURN".equals(messageJson) || "\"END_TURN\"".equals(messageJson)) {
                 gameController.endTurn();
             } else {
@@ -101,19 +137,27 @@ public class Server implements GameController.GameStateUpdateCallback {
 
     private int targetPlayerCount = 0;
 
+    /**
+     * Añade un nuevo jugador a la partida. Si es el primer jugador, establece el
+     * número total de jugadores para la partida. Inicia el juego cuando todos
+     * los jugadores esperados se han conectado.
+     * @param playerName El nombre del nuevo jugador.
+     * @param playerCount El número de jugadores que el cliente espera en la partida.
+     * @param clientHandler El manejador del cliente que se está uniendo.
+     */
     private synchronized void addPlayer(String playerName, int playerCount, ClientHandler clientHandler) {
         if (gameController.getPlayers().size() >= 6) {
             System.out.println("Game is full, rejecting player: " + playerName);
             clientHandler.close();
             return;
         }
-        //if is first joined player set max player in the game
+        // Si es el primer jugador, define el tamaño de la partida.
         if (gameController.getPlayers().isEmpty()) {
             targetPlayerCount = playerCount;
             System.out.println("Partida configurada para " + targetPlayerCount + " jugadores.");
         }
 
-        // Verify players limit
+        // Rechaza jugadores si la partida ya está llena.
         if (gameController.getPlayers().size() >= targetPlayerCount) {
             System.out.println("Game is full (max " + targetPlayerCount + "), rejecting player: " + playerName);
             clientHandler.sendMessage("GAME_FULL");
@@ -124,17 +168,21 @@ public class Server implements GameController.GameStateUpdateCallback {
         Player newPlayer = new Player(playerName, "");
         clientHandler.setPlayer(newPlayer);
         gameController.addPlayer(newPlayer);
-        //show assigned color
+        // Notifica al cliente el color que le fue asignado.
         clientHandler.sendMessage("COLOR_ASSIGNED:" + newPlayer.getColor());
-        //if all players are joined, start
+        // Si se alcanza el número de jugadores, inicia el juego.
         if (gameController.getPlayers().size() == targetPlayerCount) {
             System.out.println("Todos los jugadores conectados. Creando juego...");
             gameController.createNewGame(new ArrayList<>(gameController.getPlayers()));
         } else {
+            // Si no, informa que se está esperando a otros.
             clientHandler.sendMessage("ESPERANDO_JUGADORES");
         }
     }
 
+    /**
+     * Elimina un cliente de la lista de clientes por desconexión
+     */
     private void removeClient(ClientHandler client) {
         clients.remove(client);
         if (client.getPlayer() != null) {
@@ -146,6 +194,10 @@ public class Server implements GameController.GameStateUpdateCallback {
         new Server(12345);
     }
 
+    /**
+     * ClientHandler gestiona la comunicación con un único cliente en un hilo dedicado.
+     * Lee los mensajes del cliente y los pasa al servidor principal para su procesamiento.
+     */
     private class ClientHandler implements Runnable {
         private final Socket socket;
         private final Server server;
@@ -167,17 +219,19 @@ public class Server implements GameController.GameStateUpdateCallback {
                 out = new PrintWriter(socket.getOutputStream(), true);
                 in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
+                // Lee la información inicial del jugador.
                 String name = in.readLine();
-                int playerCount = Integer.parseInt(in.readLine()); // ← Agregá esta línea
+                int playerCount = Integer.parseInt(in.readLine());
 
                 if (name != null && !name.trim().isEmpty()) {
-                    server.addPlayer(name.trim(), playerCount, this); // ← Ahora con 3 parámetros
+                    server.addPlayer(name.trim(), playerCount, this);
                 } else {
                     System.err.println("Client connected without a name. Closing connection.");
                     close();
                     return;
                 }
 
+                // Bucle para leer los mensajes del cliente.
                 String line;
                 while ((line = in.readLine()) != null) {
                     server.handleClientMessage(line, this);
@@ -189,12 +243,18 @@ public class Server implements GameController.GameStateUpdateCallback {
             }
         }
 
+        /**
+         * Envía un mensaje a este cliente específico.
+         */
         public void sendMessage(String message) {
             if (out != null && !out.checkError()) {
                 out.println(message);
             }
         }
 
+        /**
+         * Cierra la conexión y notifica al servidor para eliminar este handler.
+         */
         public void close() {
             server.removeClient(this);
             try {

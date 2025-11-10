@@ -16,7 +16,11 @@ public class GameStatsController {
         this.serviceGameStats = GameStatsService.getInstance();
     }
 
-    // Método para inicializar la vista y conectar todos los listeners
+    /**
+     * Inicializa y muestra la vista de estadísticas. Si la vista no ha sido creada,
+     * la instancia, configura los listeners para los eventos de la UI y carga
+     * todas las estadísticas disponibles.
+     */
     public void initializeView() {
         if (statsView == null) {
             statsView = GameStatsView.getInstance();
@@ -26,7 +30,10 @@ public class GameStatsController {
         statsView.setVisible(true);
     }
 
-    // Configurar todos los listeners de la vista
+    /**
+     * Configura los manejadores de eventos para los componentes de la vista,
+     * como el botón de búsqueda y la selección de filas en la tabla.
+     */
     private void setupListeners() {
         // Listener para el botón de búsqueda
         statsView.addSearchListener(e -> handleSearch());
@@ -39,7 +46,11 @@ public class GameStatsController {
         });
     }
 
-    // Manejar la búsqueda por ID de juego
+    /**
+     * Procesa el evento de búsqueda. Obtiene el ID del campo de texto,
+     * lo valida y, si es un número válido, busca las estadísticas de ese juego.
+     * Si el campo está vacío, recarga todas las estadísticas.
+     */
     private void handleSearch() {
         String searchText = statsView.getSearchText();
         if (!searchText.isEmpty()) {
@@ -55,12 +66,19 @@ public class GameStatsController {
         }
     }
 
-    // Manejar la selección de una fila en la tabla
+    /**
+     * Maneja la selección de una fila en la tabla de la vista,
+     * solicitando a la vista que muestre los detalles del juego seleccionado.
+     */
     private void handleTableSelection() {
         statsView.showSelectedGameDetails();
     }
 
-    // Cargar todas las estadísticas en la tabla
+    /**
+     * Solicita al servicio todas las estadísticas de los juegos almacenados
+     * y actualiza la vista para que las muestre en la tabla. Maneja el caso
+     * en que no se encuentren datos.
+     */
     public void loadAllStats() {
         try {
             ArrayList<GameStats> allStats = serviceGameStats.findAllStats();
@@ -73,7 +91,11 @@ public class GameStatsController {
         }
     }
 
-    // Buscar estadísticas por ID de juego
+    /**
+     * Busca las estadísticas de un juego específico por su ID a través del servicio
+     * y actualiza la tabla en la vista para mostrar solo ese resultado.
+     * @param gameId El ID del juego a buscar.
+     */
     public void searchStats(int gameId) {
         try {
             GameStats stats = serviceGameStats.findStats(gameId);
@@ -93,7 +115,13 @@ public class GameStatsController {
         }
     }
 
-    // Agregar nuevas estadísticas de juego (desde el GameController)
+    /**
+     * Crea un nuevo registro de estadísticas de juego y solicita al servicio
+     * que lo inserte en la base de datos.
+     * @param winner El nombre del ganador.
+     * @param winnerColor El color del ganador.
+     * @param namePlayers Los nombres de todos los jugadores.
+     */
     public void addStatsGame(String winner, String winnerColor, String[] namePlayers) {
         GameStats gameStats = new GameStats(0, winner, winnerColor, namePlayers);
         serviceGameStats.insertStats(gameStats);

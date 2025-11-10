@@ -14,6 +14,12 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
 
+/**
+ * Representa el cliente de red del juego. Se ejecuta en un hilo separado para manejar
+ * la comunicación con el servidor sin bloquear la interfaz de usuario (UI). Es responsable
+ * de enviar las acciones del jugador (clics, fin de turno) al servidor y de recibir
+ * las actualizaciones del estado del juego para mostrarlas en la vista (GameView).
+ */
 public class Client extends Thread {
 
     private Socket socket;
@@ -25,6 +31,15 @@ public class Client extends Thread {
     private final Gson gson;
     private boolean connected = false;
 
+    /**
+     * Construye el cliente, establece la conexión con el servidor y configura
+     * los listeners en la GameView para capturar las acciones del usuario.
+     * @param playerName Nombre del jugador.
+     * @param playerCount Número de jugadores en la partida.
+     * @param host Dirección IP del servidor.
+     * @param port Puerto del servidor.
+     * @param gameView La vista del juego que este cliente controlará.
+     */
     public Client(String playerName, int playerCount, String host, int port, GameView gameView) {
         this.playerName = playerName;
         this.playerCount = playerCount;
@@ -32,7 +47,7 @@ public class Client extends Thread {
         this.gson = new GsonBuilder().create();
 
 
-        // Set up listeners on the view to send actions to this client
+        // Configura listeners en la vista para enviar acciones a este cliente.
         this.gameView.setCellClickListener(this::sendClickAction);
         this.gameView.addEndTurnListener(e -> sendEndTurnAction());
 
@@ -46,23 +61,36 @@ public class Client extends Thread {
         }
     }
 
+    /**
+     * Serializa las coordenadas de un clic en formato JSON y las envía al servidor.
+     * @param pixelPos Par de enteros con las coordenadas (x, y) del clic.
+     */
     private void sendClickAction(Pair<Integer, Integer> pixelPos) {
         if (!connected) return;
-        //simple object for serializate
+        // Objeto simple para serializar los datos del clic.
         ClickData clickData = new ClickData(pixelPos.getValue0(), pixelPos.getValue1());
         String jsonAction = gson.toJson(clickData);
         out.println(jsonAction);
     }
 
+    /**
+     * Envía un mensaje simple al servidor para indicar que el jugador ha terminado su turno.
+     */
     private void sendEndTurnAction() {
         if (!connected) return;
         out.println("END_TURN");
     }
 
+    /**
+     * El bucle principal del hilo del cliente. Escucha continuamente los mensajes del servidor.
+     * Procesa mensajes simples (como la asignación de color) y objetos JSON complejos
+     * (GameStateDTO), actualizando la interfaz de usuario de forma segura en el
+     * hilo de despacho de eventos de Swing (EDT).
+     */
     @Override
     public void run() {
         try {
-            // 1. Enviar nombre y cantidad de jugadores
+            // 1. Enviar nombre y cantidad de jugadores al servidor para el registro.
             out.println(playerName);
             out.println(playerCount);
 
@@ -70,7 +98,7 @@ public class Client extends Thread {
             while ((serverLine = in.readLine()) != null) {
                 final String line = serverLine;
 
-                // Manejo de mensajes simples (no JSON)
+                // Manejo de mensajes simples de texto (no JSON).
                 if (line.startsWith("COLOR_ASSIGNED:")) {
                     String color = line.split(":")[1];
                     SwingUtilities.invokeLater(() -> gameView.setPlayerColor(color));
@@ -82,7 +110,8 @@ public class Client extends Thread {
                     continue;
                 }
 
-                // Resto es JSON del estado del juego
+                // El resto de mensajes se asume que son JSON con el estado del juego.
+                // Se usa SwingUtilities.invokeLater para actualizar la UI de forma segura.
                 SwingUtilities.invokeLater(() -> {
                     try {
                         GameStateDTO gameStateDTO = gson.fromJson(line, GameStateDTO.class);
@@ -106,6 +135,9 @@ public class Client extends Thread {
         }
     }
 
+    /**
+     * Maneja errores de conexión inicial, mostrando un diálogo de error al usuario.
+     */
     private void handleConnectionError(IOException e) {
         e.printStackTrace();
         SwingUtilities.invokeLater(() ->
@@ -116,6 +148,9 @@ public class Client extends Thread {
         );
     }
 
+    /**
+     * Cierra el socket y los flujos de comunicación de forma segura.
+     */
     private void closeConnection() {
         try {
             if (socket != null) socket.close();
@@ -123,7 +158,7 @@ public class Client extends Thread {
             e.printStackTrace();
         }
     }
-    //serialize data clicks
+    // Record simple para serializar los datos de un clic.
         private record ClickData(int value0, int value1) {
     }
 }
