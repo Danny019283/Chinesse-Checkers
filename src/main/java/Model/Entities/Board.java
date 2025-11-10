@@ -1,24 +1,22 @@
 package Model.Entities;
-
-import org.javatuples.Pair;
 import java.util.HashMap;
 
 public class Board {
-    private final HashMap<Pair <Integer, Integer>, HexCell> cells;
+    private final HashMap<Coords,  HexCell> cells;
 
     public Board() {
         this.cells = new HashMap<>();
     }
 
     public HexCell getCell(int q, int r) {
-        return cells.get(new Pair<>(q, r));
+        return cells.get(new Coords(q, r));
     }
 
     public void putCell(HexCell hexCell) {
-        cells.put(new Pair<>(hexCell.getQ(), hexCell.getR()), hexCell);
+        cells.put(new Coords(hexCell.getQ(), hexCell.getR()), hexCell);
     }
 
-    public boolean contains(Pair <Integer, Integer> pos) {
+    public boolean contains(Coords pos) {
         return cells.containsKey(pos);
     }
 
@@ -26,7 +24,7 @@ public class Board {
         return cells.size();
     }
 
-    public HashMap<Pair <Integer, Integer>, HexCell> getCells() {
+    public HashMap<Coords, HexCell> getCells() {
         return cells;
     }
 }

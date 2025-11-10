@@ -1,6 +1,7 @@
 package Model.Service;
 
 import Model.Entities.Board;
+import Model.Entities.Coords;
 import Model.Entities.HexCell;
 import Model.Entities.Piece;
 import org.javatuples.Pair;
@@ -8,87 +9,23 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 public class GameRulesService {
-    private static GameRulesService instance;
-    private final BoardService boardService;
-    private final Board board;
+    private GameRulesService() {}
 
-    public GameRulesService(Board board, BoardService boardService) {
-        this.board = board;
-        this.boardService = boardService;
-    }
-
-    public static GameRulesService getInstance(Board board, BoardService boardService) {
-        if (instance == null) {
-            instance = new GameRulesService(board,boardService);
-        }
-        return instance;
-    }
-
-    public void setInitialPieces(String color) {
-        int q, r;
-        String[] directions;
-        switch(color) {
-            case "GREEN": {
-                q = 4; r = -8;
-                directions = new String[]{"SW", "E", "NW"};
-                break;
-            }
-            case "BLUE": {
-                q = -4; r = -4;
-                directions = new String[]{"E", "SW", "NW"};
-                break;
-            }
-            case "PURPLE": {
-                q = -8; r = 4;
-                directions = new String[]{"E", "NW", "SW"};
-                break;
-            }
-            case "RED": {
-                q = -4; r = 8;
-                directions = new String[]{"NW", "E", "SW"};
-                break;
-            }
-            case "ORANGE": {
-                q = 4; r = 4;
-                directions = new String[]{"W", "NE", "SE"};
-                break;
-            }
-            case "YELLOW": {
-                q = 8; r = -4;
-                directions = new String[]{"W", "SE", "NE"};
-                break;
-            }
-            default: {
-                throw new IllegalArgumentException("Invalid color: " + color);
-            }
-        }
-        ArrayList<HexCell> initialCells = boardService.calculateCornerCells(
-                new ArrayList<>(), directions, 0, 3, q, r, true);
-        Piece piece = new Piece(color);
-        for (HexCell cell : initialCells) {
-            cell.setPiece(piece);
-        }
-    }
-
-    public boolean validateNumOfPlayers(int maxPlayers, int connectedPlayers) {
-        return connectedPlayers == maxPlayers;
-    }
-
-
-    public HashMap<Pair<Integer, Integer>, String> getValidMoves(Pair<Integer, Integer> currentPos) {
-        int q = currentPos.getValue0();
-        int r = currentPos.getValue1();
-        ArrayList<Pair<String, HexCell>> neighbors = boardService.getNeighbors(new Pair<>(q, r));
-        HashMap<Pair<Integer, Integer>, String> validMoves = new HashMap<>();
+    public static HashMap<Coords, String> getValidMoves(Board board, Coords currentPos) {
+        int q = currentPos.getX();
+        int r = currentPos.getY();
+        ArrayList<Pair<String, HexCell>> neighbors = BoardService.getNeighbors(board, new Coords(q, r));
+        HashMap<Coords, String> validMoves = new HashMap<>();
         for (Pair<String, HexCell> neighbor : neighbors) {
-            int neighborQ = neighbor.getValue1().getQ();
-            int neighborR = neighbor.getValue1().getR();
+            if(neighbor == null) continue;
+            if(neighbor.getValue1() == null) continue;
             String direction = neighbor.getValue0();
             if (neighbor.getValue1().getPiece() == null) {
-                validMoves.put(new Pair<>(neighborQ, neighborR), direction);
-                continue;
+                HexCell cell = neighbor.getValue1();
+                Coords coords = new Coords(cell.getQ(), cell.getR());
+                validMoves.put(coords, direction);
             }
-            Pair<Integer, Integer> jump = boardService.calculateJump(direction, currentPos);
+            Coords jump = BoardService.calculateJump(board, direction, currentPos);
             if (jump != null) {
                 validMoves.put(jump, direction);
             }
@@ -96,10 +33,10 @@ public class GameRulesService {
         return validMoves;
     }
 
-    public boolean won(String playerColor) {
-        Pair<Integer, Integer> oppositeCorner = boardService.getOppositeCorner(playerColor);
-        int q = oppositeCorner.getValue0();
-        int r = oppositeCorner.getValue1();
+    public static boolean hasWon(Board board, String playerColor) {
+        Coords oppositeCorner = BoardService.getOppositeCorner(playerColor);
+        int q = oppositeCorner.getX();
+        int r = oppositeCorner.getY();
         Piece pieceInOppositeCorner = board.getCell(q, r).getPiece();
         if (pieceInOppositeCorner == null) {
             return false;
@@ -107,14 +44,7 @@ public class GameRulesService {
         if (!pieceInOppositeCorner.getColor().equals(playerColor)) {
             return false;
         }
-        String[] directionsForCorner = boardService.getDirectionsForCorner(q, r);
-        return boardService.checkOppositeCorner(playerColor, directionsForCorner, q, r);
-    }
-
-    public void movePiece(Pair<Integer, Integer> from, Pair<Integer, Integer> to) {
-        HexCell fromCell = board.getCell(from.getValue0(), from.getValue1());
-        HexCell toCell = board.getCell(to.getValue0(), to.getValue1());
-        toCell.setPiece(fromCell.getPiece());
-        fromCell.setPiece(null);
+        String[] directionsForCorner = BoardService.getDirectionsForCorner(q, r);
+        return BoardService.checkOppositeCorner(board, playerColor, directionsForCorner, q, r);
     }
 }

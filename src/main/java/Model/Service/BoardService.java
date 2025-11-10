@@ -1,30 +1,16 @@
 package Model.Service;
 
-import Model.Entities.Board;
-import Model.Entities.HexCell;
-import Model.Entities.Piece;
+import Model.Entities.*;
+import View.PixelCell;
 import org.javatuples.Pair;
 import java.util.ArrayList;
 import java.util.Map;
-
 import static java.lang.Math.sqrt;
 
 public class BoardService {
-    private static BoardService instance;
-    private final Board board;
+    private BoardService() {}
 
-    BoardService() {
-        this.board = new Board();
-    }
-
-    public static BoardService getInstance() {
-        if (instance == null) {
-            instance = new BoardService();
-        }
-        return instance;
-    }
-
-    public final Map<String, String> oppositeDirections = Map.of(
+    public static final Map<String, String> OPPOSITE_DIRECTIONS = Map.of(
             "SW", "NE",
             "SE", "NW",
             "E", "W",
@@ -33,69 +19,66 @@ public class BoardService {
             "W", "E"
     );
 
-    public Board createBoard() {
+    public static void createBoard(Board board) {
         //create first triangle
         String[] directions = {"SW", "E", "NW"};
-        createTriangle(directions, 0, 12, 4, -8, null);
+        createTriangleHex(board, directions, 0, 12, 4, -8);
         //create inverted triangle
         String[] directionsInverted = {"NW", "E", "SW"};
-        createTriangle(directionsInverted, 0, 12, -4, 8, null);
-        return board;
+        createTriangleHex(board, directionsInverted, 0, 12, -4, 8);
     }
 
-    public Board createTriangle(String[] directions, int dirIndex, int stepsMax, int q, int r, Piece piece) {
+    public static Board createTriangleHex(Board board, String[] directions, int dirIndex, int stepsMax, int q, int r) {
         if (stepsMax < 0) {
             return board;
         }
         String currentDir = directions[dirIndex];
         if (stepsMax == 12) {
-            Pair<Integer, Integer> newCoord = calculateMove(oppositeDirections.get(currentDir), q, r);
-            q = newCoord.getValue0();
-            r = newCoord.getValue1();
+            Coords newCoord = calculateMove(OPPOSITE_DIRECTIONS.get(currentDir), q, r);
+            q = newCoord.getX();
+            r = newCoord.getY();
         }
         int stepsCount = 0;
         while (stepsCount <= stepsMax) {
-            Pair<Integer, Integer> newCoord = calculateMove(currentDir, q, r);
-            q = newCoord.getValue0();
-            r = newCoord.getValue1();
-            if (!board.contains(new Pair<>(q, r))) {
-                HexCell cell = new HexCell(q, r, piece);
+            Coords newCoord = calculateMove(currentDir, q, r);
+            q = newCoord.getX();
+            r = newCoord.getY();
+            if (!board.contains(new Coords(q, r))) {
+                HexCell cell = new HexCell(q, r, null);
                 board.putCell(cell);
             }
             stepsCount++;
         }
         int nextDirIndex = (dirIndex + 1) % directions.length;
-        return createTriangle(directions, nextDirIndex, stepsMax - 1, q, r, null);
+        return createTriangleHex(board, directions, nextDirIndex, stepsMax - 1, q, r);
     }
 
-    public Pair<Integer, Integer> calculateMove(String direction, int q, int r) {
+    public static Coords calculateMove(String direction, int q, int r) {
         return switch (direction) {
-            case "NW" -> new Pair<>(q, r - 1);
-            case "NE" -> new Pair<>(q + 1, r - 1);
-            case "W" -> new Pair<>(q - 1, r);
-            case "E" -> new Pair<>(q + 1, r);
-            case "SW" -> new Pair<>(q - 1, r + 1);
-            case "SE" -> new Pair<>(q, r + 1);
+            case "NW" -> new Coords(q, r - 1);
+            case "NE" -> new Coords(q + 1, r - 1);
+            case "W" -> new Coords(q - 1, r);
+            case "E" -> new Coords(q + 1, r);
+            case "SW" -> new Coords(q - 1, r + 1);
+            case "SE" -> new Coords(q, r + 1);
             default -> throw new IllegalArgumentException("Invalid direction: " + direction);
         };
     }
 
-    public ArrayList<Pair<String, HexCell>> getNeighbors(Pair<Integer, Integer> coord) {
+    public static ArrayList<Pair<String, HexCell>> getNeighbors(Board board, Coords coords) {
         ArrayList<Pair<String, HexCell>> neighbors = new ArrayList<>();
         String[] directions = {"NW", "NE", "E", "SE", "SW", "W"};
         for (String direction : directions) {
-            Pair<Integer, Integer> newCoord = calculateMove(direction, coord.getValue0(), coord.getValue1());
-            if (board.contains(newCoord)) {
-                neighbors.add(new Pair<>(
-                        direction,
-                        board.getCell(newCoord.getValue0(), newCoord.getValue1()))
-                );
-            }
+            Coords newCoord = calculateMove(direction, coords.getX(), coords.getY());
+            neighbors.add(new Pair<>(
+                    direction,
+                    board.getCell(newCoord.getX(), newCoord.getY()))
+            );
         }
         return neighbors;
     }
 
-    public static Pair<Integer, Integer> pointyHexToPixel(HexCell cell) {
+    public static Coords pointyHexToPixel(HexCell cell) {
         // hex to cartesian
         double x = sqrt(3) * cell.getQ()  +  sqrt(3)/2 * cell.getR();
         double y = 3.0/2.0 * cell.getR();
@@ -105,21 +88,32 @@ public class BoardService {
         y = y * size;
         int roundX = (int) Math.round(x);
         int roundY = (int) Math.round(y);
-        return new Pair<>(roundX, roundY);
+        return new Coords(roundX, roundY);
     }
 
-    public Pair<Integer, Integer> pixelToPointyHex(Pair<Integer, Integer> point) {
+    public static Coords adjustPixelOffset(int pixelX, int pixelY) {
+        int centerX = 800 / 2; // mismo que BoardPanel
+        int centerY = 700 / 2;
+
+        int adjustedX = pixelX - centerX;
+        int adjustedY = pixelY - centerY;
+
+       return new Coords(adjustedX, adjustedY);
+    }
+
+    public static Coords pixelToPointyHex(int pixelX, int pixelY) {
+        Coords point = adjustPixelOffset(pixelX, pixelY);
         // invert the scaling
         int size = 25;
-        double x = (double) point.getValue0() / size;
-        double y = (double) point.getValue1() / size;
+        double x = (double) point.getX() / size;
+        double y = (double) point.getY() / size;
         // cartesian to hex
         double q = sqrt(3)/3 * x  -  1.0/3 * y;
         double r = 2.0/3 * y;
         return axialRound(q, r);
     }
 
-    private Pair<Integer, Integer> axialRound(double fracQ, double fracR) {
+    private static Coords axialRound(double fracQ, double fracR) {
         double fracS = -fracQ - fracR;
         int q = (int) Math.round(fracQ);
         int r = (int) Math.round(fracR);
@@ -135,86 +129,86 @@ public class BoardService {
         else {
             r = -q-s;
         }
-        return new Pair<>(q, r);
+        return new Coords(q, r);
     }
 
-    public ArrayList<HexCell> calculateCornerCells(ArrayList<HexCell> cornerCells, String[] directions,
-                                                   int dirIndex, int stepsMax, int q, int r, boolean firstLap) {
+    public static ArrayList<HexCell> calculateCornerCells(Board board, ArrayList<HexCell> cornerCells, String[] directions,
+                                                          int dirIndex, int stepsMax, int q, int r, boolean firstLap) {
         if (stepsMax < 0) {
             return cornerCells;
         }
         String currentDir = directions[dirIndex];
         if (firstLap) {
-            Pair<Integer, Integer> newCoord = calculateMove(oppositeDirections.get(currentDir), q, r);
-            q = newCoord.getValue0();
-            r = newCoord.getValue1();
+            Coords newCoord = calculateMove(OPPOSITE_DIRECTIONS.get(currentDir), q, r);
+            q = newCoord.getX();
+            r = newCoord.getY();
         }
         int stepsCount = 0;
         while (stepsCount <= stepsMax) {
-            Pair<Integer, Integer> newCoord = calculateMove(currentDir, q, r);
-            q = newCoord.getValue0();
-            r = newCoord.getValue1();
-            if (board.contains(new Pair<>(q, r))) {
+            Coords newCoord = calculateMove(currentDir, q, r);
+            q = newCoord.getX();
+            r = newCoord.getY();
+            if (board.contains(new Coords(q, r))) {
                 cornerCells.add(board.getCell(q, r));
             }
             stepsCount++;
         }
         int nextDirIndex = (dirIndex + 1) % directions.length;
-        return calculateCornerCells(cornerCells, directions, nextDirIndex, stepsMax - 1, q, r, false);
+        return calculateCornerCells(board, cornerCells, directions, nextDirIndex, stepsMax - 1, q, r, false);
     }
 
-    public Pair<Integer, Integer> calculateJump(String direction, Pair<Integer, Integer> position) {
-        int q = position.getValue0();
-        int r = position.getValue1();
-        Pair<Integer, Integer> step = calculateMove(direction, q, r);
+    public static Coords calculateJump(Board board, String direction, Coords position) {
+        int q = position.getX();
+        int r = position.getY();
+        Coords step = calculateMove(direction, q, r);
         if (step == null) {
             return null;
         }
-        HexCell intermediateCell = board.getCell(step.getValue0(), step.getValue1());
+        HexCell intermediateCell = board.getCell(step.getX(), step.getY());
         if (intermediateCell == null) {
             return null;
         }
         if (intermediateCell.getPiece() == null) {
             return null;
         }
-        Pair<Integer, Integer> destPos = calculateMove(direction, step.getValue0(), step.getValue1());
+        Coords destPos = calculateMove(direction, step.getX(), step.getY());
         if (!board.contains(destPos)) {
             return null;
         }
-        HexCell destCell = board.getCell(destPos.getValue0(), destPos.getValue1());
+        HexCell destCell = board.getCell(destPos.getX(), destPos.getY());
         if (destCell.getPiece() != null) {
             return null;
         }
-        return new Pair<>(destPos.getValue0(), destPos.getValue1());
+        return new Coords(destPos.getX(), destPos.getY());
     }
 
-    public Pair<Integer, Integer> getOppositeCorner(String color) {
-        Map <String, Pair<Integer, Integer>> cornerPositions = Map.of(
-                "GREEN", new Pair<>(-4, 8),
-                "BLUE", new Pair<>(4, 4),
-                "PURPLE", new Pair<>(8, -4),
-                "RED", new Pair<>(4, -8),
-                "ORANGE", new Pair<>(-4, -4),
-                "YELLOW", new Pair<>(-8, 4)
+    public static Coords getOppositeCorner(String color) {
+        Map <String, Coords> cornerPositions = Map.of(
+                "GREEN", new Coords(-4, 8),
+                "BLUE", new Coords(4, 4),
+                "PURPLE", new Coords(8, -4),
+                "RED", new Coords(4, -8),
+                "ORANGE", new Coords(-4, -4),
+                "YELLOW", new Coords(-8, 4)
         );
         return cornerPositions.get(color);
     }
 
-    public String[] getDirectionsForCorner(int q, int r) {
-        Pair<Integer, Integer> corner = new Pair<>(q, r);
-        Map <Pair<Integer, Integer>, String[]> cornerPositions = Map.of(
-                new Pair<>(4, -8), new String[]{"SW", "E", "NW"},
-                new Pair<>(-4, 8), new String[]{"NW", "E", "SW"},
-                new Pair<>(4, 4), new String[]{"W", "NE", "SE"},
-                new Pair<>(-4, -4), new String[]{"E", "SW", "NW"},
-                new Pair<>(8, -4), new String[]{"W", "SE", "NE"},
-                new Pair<>(-8, 4), new String[]{"E", "NW", "SW"}
+    public static String[] getDirectionsForCorner(int q, int r) {
+        Coords corner = new Coords(q, r);
+        Map <Coords, String[]> cornerPositions = Map.of(
+                new Coords(4, -8), new String[]{"SW", "E", "NW"},
+                new Coords(-4, 8), new String[]{"NW", "E", "SW"},
+                new Coords(4, 4), new String[]{"W", "NE", "SE"},
+                new Coords(-4, -4), new String[]{"E", "SW", "NW"},
+                new Coords(8, -4), new String[]{"W", "SE", "NE"},
+                new Coords(-8, 4), new String[]{"E", "NW", "SW"}
         );
         return cornerPositions.get(corner);
     }
 
-    public boolean checkOppositeCorner(String color, String[] directions, int q , int r) {
-        ArrayList<HexCell> initialCells = calculateCornerCells(
+    public static boolean checkOppositeCorner(Board board, String color, String[] directions, int q , int r) {
+        ArrayList<HexCell> initialCells = calculateCornerCells(board,
                 new ArrayList<>(), directions, 0, 3, q, r, true);
         for (HexCell cell : initialCells) {
             Piece piece = cell.getPiece();
@@ -228,24 +222,84 @@ public class BoardService {
         return true;
     }
 
-    public boolean isPlayerPiece(Pair<Integer, Integer> hexCoord, String currenPlayer) {
+    public static boolean isPlayerPiece(Board board, Coords hexCoord, String currentPieceColor) {
         if (!board.contains(hexCoord)) {
             return false;
         }
-        if (board.getCell(hexCoord.getValue0(), hexCoord.getValue1()).getPiece() == null) {
+        if (board.getCell(hexCoord.getX(), hexCoord.getY()).getPiece() == null) {
             return false;
         }
-        Piece piece = board.getCell(hexCoord.getValue0(), hexCoord.getValue1()).getPiece();
-        return piece.getColor().equals(currenPlayer);
+        Piece piece = board.getCell(hexCoord.getX(), hexCoord.getY()).getPiece();
+        return piece.getColor().equals(currentPieceColor);
     }
 
-    public boolean isJumpMove(Pair<Integer, Integer> prevPosition, Pair<Integer, Integer> newPosition, String direction) {
+    public static boolean isJumpMove(Board board, Coords prevPosition, Coords newPosition, String direction) {
         if(direction == null) {
             return false;
         }
-        String oppositeDirection = oppositeDirections.get(direction);
-        Pair<Integer, Integer> jumpBack = calculateJump(oppositeDirection, newPosition);
+        String oppositeDirection = OPPOSITE_DIRECTIONS.get(direction);
+        Coords jumpBack = calculateJump(board, oppositeDirection, newPosition);
         return prevPosition.equals(jumpBack);
     }
 
+    public static void setupPiecesForOnePlayer(Board board, String color) {
+        int q, r;
+        String[] directions;
+        switch(color) {
+            case "GREEN": {
+                q = 4; r = -8;
+                directions = new String[]{"SW", "E", "NW"};
+                break;
+            }
+            case "BLUE": {
+                q = -4; r = -4;
+                directions = new String[]{"E", "SW", "NW"};
+                break;
+            }
+            case "PURPLE": {
+                q = -8; r = 4;
+                directions = new String[]{"E", "NW", "SW"};
+                break;
+            }
+            case "RED": {
+                q = -4; r = 8;
+                directions = new String[]{"NW", "E", "SW"};
+                break;
+            }
+            case "ORANGE": {
+                q = 4; r = 4;
+                directions = new String[]{"W", "NE", "SE"};
+                break;
+            }
+            case "YELLOW": {
+                q = 8; r = -4;
+                directions = new String[]{"W", "SE", "NE"};
+                break;
+            }
+            default: {
+                throw new IllegalArgumentException("Invalid color: " + color);
+            }
+        }
+        ArrayList<HexCell> initialCells = calculateCornerCells(board,
+                new ArrayList<>(), directions, 0, 3, q, r, true);
+        for (HexCell cell : initialCells) {
+            cell.setPiece(new Piece(color));
+        }
+    }
+
+    public static void setupPieces(Board board, ArrayList<Player> players) {
+        for (Player player : players) {
+            setupPiecesForOnePlayer(board, player.getColor());
+        }
+    }
+
+    public static ArrayList<PixelCell> getPixelPositions(Board board) {
+        ArrayList<PixelCell> pixelBoard = new ArrayList<>();
+        for (HexCell cell : board.getCells().values()) {
+            Coords pixelCoords = pointyHexToPixel(cell);
+            PixelCell pixelCell = new PixelCell(pixelCoords, cell.getPiece());
+            pixelBoard.add(pixelCell);
+        }
+        return pixelBoard;
+    }
 }

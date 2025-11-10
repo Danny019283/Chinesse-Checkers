@@ -95,8 +95,7 @@ public class GameStatsController {
 
     // Agregar nuevas estadísticas de juego (desde el GameController)
     public void addStatsGame(String winner, String winnerColor, String[] namePlayers) {
-        int gameId = serviceGameStats.getGameId();
-        GameStats gameStats = new GameStats(gameId, winner, winnerColor, namePlayers);
+        GameStats gameStats = new GameStats(0, winner, winnerColor, namePlayers);
         serviceGameStats.insertStats(gameStats);
     }
 }

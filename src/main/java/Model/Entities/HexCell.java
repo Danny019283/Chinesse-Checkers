@@ -6,8 +6,8 @@ public class HexCell {
     private Piece piece;
 
     public HexCell(int q, int r, Piece piece) {
-        this.setQ(q);
-        this.setR(r);
+        this.q = q;
+        this.r = r;
         this.piece = piece;
     }
 
@@ -23,15 +23,12 @@ public class HexCell {
         return q;
     }
 
-    public void setQ(int q) {
+    public void setQR(int q, int r) {
         this.q = q;
+        this.r = r;
     }
 
     public int getR() {
         return r;
-    }
-
-    public void setR(int r) {
-        this.r = r;
     }
 }

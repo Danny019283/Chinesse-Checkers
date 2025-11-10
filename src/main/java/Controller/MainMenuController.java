@@ -12,7 +12,7 @@ public class MainMenuController {
     private final GameStatsController statsController;
 
     public MainMenuController() {
-        this.mainMenuView = MainMenuView.getInstance();
+        this.mainMenuView = new MainMenuView();
         this.statsController = new GameStatsController();
         setupListeners();
     }
@@ -62,7 +62,7 @@ public class MainMenuController {
 
     private void startGameConnection(String playerName, String serverIP, int serverPort) {
         // Create the GameView instance. It will be managed by the Client thread.
-        GameView gameView = GameView.getInstance(new ArrayList<>());
+        GameView gameView = new GameView();
 
         // Create and start the client network thread, passing the view to it.
         Client client = new Client(playerName, serverIP, serverPort, gameView);

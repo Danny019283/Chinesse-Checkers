@@ -11,18 +11,11 @@ public class MainMenuView extends JFrame {
     private final JTextField txtName = new JTextField(15);
     private final JTextField txtIP = new JTextField(15);
     private final JTextField txtPort = new JTextField(6);
-    private static MainMenuView instance;
 
     private final Dimension buttonSize = new Dimension(300, 60);
     private final Font buttonFont = new Font("Segoe UI", Font.BOLD, 14);
     private final Font titleFont = new Font("Segoe UI", Font.BOLD, 40);
 
-    public static MainMenuView getInstance() {
-        if (instance == null) {
-            instance = new MainMenuView();
-        }
-        return instance;
-    }
 
     public MainMenuView() {
         setTitle("Chinese Checkers - Menú Principal");
@@ -32,7 +25,6 @@ public class MainMenuView extends JFrame {
         buildUI();
         setSize(800, 550);
         setLocationRelativeTo(null);
-        setVisible(true);
     }
 
     public void buildUI() {
@@ -190,21 +182,6 @@ public class MainMenuView extends JFrame {
 
     public void closeMenu() {
         dispose();
-        instance = null;
     }
 
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> {
-            MainMenuView menu = new MainMenuView();
-            menu.addStartGameListener(e -> {
-                String ip = menu.getServerIP();
-                int port = menu.getServerPort();
-                menu.showMessage("Conectando a " + ip + ":" + port, "Iniciando Juego", JOptionPane.INFORMATION_MESSAGE);
-                menu.closeMenu();
-            });
-            menu.addViewStatsListener(e -> {
-                menu.showMessage("Funcionalidad de estadísticas en desarrollo", "Estadísticas", JOptionPane.INFORMATION_MESSAGE);
-            });
-        });
-    }
 }

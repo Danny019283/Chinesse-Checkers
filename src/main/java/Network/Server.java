@@ -2,89 +2,109 @@ package Network;
 
 import Controller.GameController;
 import Model.Entities.Player;
-import org.javatuples.Pair;
+import DTO.GameStateDTO;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonSyntaxException;
 
+import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-public class Server {
+public class Server implements GameController.GameStateUpdateCallback {
 
     private final GameController gameController;
     private final List<ClientHandler> clients = new CopyOnWriteArrayList<>();
-    private boolean gameStarted = false;
+    private final Gson gson;
 
     public Server(int port) {
-        this.gameController = new GameController(true);
+        this.gameController = new GameController();
+        this.gameController.setUpdateCallback(this);
+        this.gson = new GsonBuilder().create();
 
         try (ServerSocket serverSocket = new ServerSocket(port)) {
             System.out.println("Server is listening on port " + port);
+
             while (true) {
                 Socket socket = serverSocket.accept();
-                System.out.println("New client connected: " + socket.getInetAddress());
+                System.out.println("New client connected.");
                 ClientHandler newClient = new ClientHandler(socket, this);
                 clients.add(newClient);
                 new Thread(newClient).start();
             }
         } catch (IOException ex) {
-            System.out.println("Server exception: " + ex.getMessage());
+            System.err.println("Server exception: " + ex.getMessage());
             ex.printStackTrace();
         }
     }
 
-    synchronized void broadcastState() {
-        if (!gameStarted) return;
-        Client.GameState state = gameController.getGameState();
-        for (ClientHandler client : clients) {
-            client.sendState(state);
-        }
+    @Override
+    public void onStateUpdated() {
+        System.out.println("Server received state update. Broadcasting to clients...");
+        broadcastGameState();
     }
 
-    synchronized void handleAction(Object action, ClientHandler source) {
-        if (!gameStarted) return;
+    private synchronized void broadcastGameState() {
+        GameStateDTO gameStateDTO = gameController.getGameViewDTO();
+        if (gameStateDTO == null) {
+            System.err.println("Cannot broadcast a null game state.");
+            return;
+        }
+        System.out.println(gameStateDTO.getPiecePositions().toString());
+        String jsonState = gson.toJson(gameStateDTO);
+        for (ClientHandler client : clients) {
+            client.sendMessage(jsonState);
+        }
+        System.out.println("Broadcasted game state to " + clients.size() + " clients.");
+    }
 
-        // Basic validation to ensure the action is from the correct player
-        int playerIndex = clients.indexOf(source);
-        if (playerIndex != gameController.getCurrentTurnIndex()) {
-            // It's not this player's turn, ignore the action.
-            // Maybe send a message back to the client? For now, just log it.
-            System.out.println("Action from wrong player ignored. Current turn: " + gameController.getCurrentTurnIndex() + ", player index: " + playerIndex);
+    private synchronized void handleClientMessage(String messageJson, ClientHandler source) {
+        Player sender = source.getPlayer();
+        Player currentPlayer = gameController.getCurrentPlayer();
+
+        if (sender == null || !sender.equals(currentPlayer)) {
+            System.out.println("Action from wrong player or game not ready. Action ignored.");
             return;
         }
 
-        if (action instanceof Pair) {
-            gameController.handleCellClick((Pair<Integer, Integer>) action);
-        } else if (action.equals("END_TURN")) {
-            gameController.endTurn(gameController.isJumpSequence());
+        try {
+            if ("END_TURN".equals(messageJson) || "\"END_TURN\"".equals(messageJson)) {
+                gameController.endTurn();
+            } else {
+                Map<String, Double> pixelPos = gson.fromJson(messageJson, Map.class);
+                int pixelX = pixelPos.get("value0").intValue();
+                int pixelY = pixelPos.get("value1").intValue();
+                gameController.handleCellClick(pixelX, pixelY);
+                System.out.println("Click recibido: " + pixelX + ", " + pixelY);
+            }
+        } catch (JsonSyntaxException e) {
+            System.err.println("Invalid JSON received from client: " + messageJson);
         }
-        broadcastState();
     }
 
-    synchronized void broadcastMessage(Object message) {
-        for (ClientHandler client : clients) {
-            client.sendMessage(message);
-        }
-    }
-
-    synchronized void addPlayerToGame(ClientHandler client, String playerName) {
-        if (gameStarted) {
-            // Game already in progress, maybe add as spectator in the future
+    private synchronized void addPlayer(String playerName, ClientHandler clientHandler) {
+        if (gameController.getPlayers().size() >= 6) {
+            System.out.println("Game is full, rejecting player: " + playerName);
+            clientHandler.close();
             return;
         }
-        client.setPlayerName(playerName);
-        gameController.addPlayer(new Player(playerName, null));
-        System.out.println(playerName + " added. Total players: " + gameController.getPlayers().size());
 
-        // Start the game when 2 players have joined.
-        if (gameController.getPlayers().size() == 2) {
-            System.out.println("Two players have joined. Starting game.");
-            gameController.startGame();
-            gameStarted = true;
-            broadcastState();
+        Player newPlayer = new Player(playerName, "");
+        clientHandler.setPlayer(newPlayer);
+        gameController.addPlayer(newPlayer);
+        System.out.println(playerName + " was added to the game.");
+    }
+
+    private void removeClient(ClientHandler client) {
+        clients.remove(client);
+        if (client.getPlayer() != null) {
+            System.out.println(client.getPlayer().getName() + " disconnected.");
         }
     }
 
@@ -95,71 +115,58 @@ public class Server {
     private class ClientHandler implements Runnable {
         private final Socket socket;
         private final Server server;
-        private ObjectOutputStream oos;
-        private ObjectInputStream ois;
-        private String playerName;
+        private PrintWriter out;
+        private BufferedReader in;
+        private Player player;
 
         public ClientHandler(Socket socket, Server server) {
             this.socket = socket;
             this.server = server;
         }
 
-        public void setPlayerName(String playerName) {
-            this.playerName = playerName;
-        }
+        public void setPlayer(Player player) { this.player = player; }
+        public Player getPlayer() { return this.player; }
 
         @Override
         public void run() {
             try {
-                oos = new ObjectOutputStream(socket.getOutputStream());
-                ois = new ObjectInputStream(socket.getInputStream());
+                out = new PrintWriter(socket.getOutputStream(), true);
+                in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
-                // First, read the player's name
-                String name = (String) ois.readObject();
-                this.playerName = name;
-
-                // Add player to the game with the received name
-                server.addPlayerToGame(this, this.playerName);
-
-                // Then, send the board layout
-                oos.writeObject(server.gameController.getBoardPositions());
-
-                // Main loop for receiving actions from the client
-                while (true) {
-                    Object action = ois.readObject();
-                    server.handleAction(action, this);
+                String name = in.readLine();
+                if (name != null && !name.trim().isEmpty()) {
+                    server.addPlayer(name.trim(), this);
+                } else {
+                    System.err.println("Client connected without a name. Closing connection.");
+                    close();
+                    return;
                 }
-            } catch (IOException | ClassNotFoundException e) {
-                System.out.println("Client " + playerName + " (" + socket.getInetAddress() + ") disconnected.");
+
+                String line;
+                while ((line = in.readLine()) != null) {
+                    server.handleClientMessage(line, this);
+                }
+            } catch (IOException e) {
+                System.out.println("Connection lost with " + (player != null ? player.getName() : "client"));
             } finally {
-                clients.remove(this);
-                // Notify remaining clients that a player has disconnected
-                if (gameStarted) {
-                    server.broadcastMessage(new ServerMessage(ServerMessage.MessageType.PLAYER_DISCONNECTED, playerName + " has left the game. The game has ended."));
-                }
-                try {
+                close();
+            }
+        }
+
+        public void sendMessage(String message) {
+            if (out != null && !out.checkError()) {
+                out.println(message);
+            }
+        }
+
+        public void close() {
+            server.removeClient(this);
+            try {
+                if (socket != null && !socket.isClosed()) {
                     socket.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
                 }
-            }
-        }
-
-        public void sendState(Client.GameState state) {
-            try {
-                oos.writeObject(state);
-                oos.reset(); // Use reset to prevent caching of the GameState object
             } catch (IOException e) {
-                System.out.println("Error sending state to client " + socket.getInetAddress());
-            }
-        }
-
-        public void sendMessage(Object message) {
-            try {
-                oos.writeObject(message);
-                oos.reset();
-            } catch (IOException e) {
-                System.out.println("Error sending message to client " + socket.getInetAddress());
+                e.printStackTrace();
             }
         }
     }

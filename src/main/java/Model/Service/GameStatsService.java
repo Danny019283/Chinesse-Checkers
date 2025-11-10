@@ -22,6 +22,8 @@ public class GameStatsService {
         if (gameStats.getNamePlayers().length == 0) {
             return false;
         }
+        int gameId = gameStatsDAO.countGameStats();
+        gameStats.setGameId(gameId);
         gameStatsDAO.insertGameStat(gameStats);
         return true;
     }

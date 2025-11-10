@@ -198,7 +198,7 @@ public class GameStatsView extends JFrame {
         instance = null;
     }
 
-    // Método estático para probar la vista (ahora requiere la clase GameStats externa)
+    // Método estático para probar la vista
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
             GameStatsView statsView = new GameStatsView();

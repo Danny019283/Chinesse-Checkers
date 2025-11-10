@@ -1,128 +1,107 @@
 package Network;
 
 import View.GameView;
+import DTO.GameStateDTO;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonSyntaxException;
 import org.javatuples.Pair;
 
 import javax.swing.*;
+import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.Serializable;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.net.Socket;
-import java.util.ArrayList;
-import java.util.HashMap;
 
 public class Client extends Thread {
 
     private Socket socket;
-    private ObjectOutputStream oos;
-    private ObjectInputStream ois;
+    private PrintWriter out;
+    private BufferedReader in;
     private final GameView gameView;
     private final String playerName;
+    private final Gson gson;
+    private boolean connected = false;
 
     public Client(String playerName, String host, int port, GameView gameView) {
         this.playerName = playerName;
         this.gameView = gameView;
-        // Set up listeners on the already-created view
-        this.gameView.setCellClickListener(this::handleCellClick);
-        this.gameView.addEndTurnListener(e -> sendActionToServer("END_TURN"));
+        this.gson = new GsonBuilder().create();
+
+        // Set up listeners on the view to send actions to this client
+        this.gameView.setCellClickListener(this::sendClickAction);
+        this.gameView.addEndTurnListener(e -> sendEndTurnAction());
 
         try {
             this.socket = new Socket(host, port);
-            this.oos = new ObjectOutputStream(socket.getOutputStream());
-            this.ois = new ObjectInputStream(socket.getInputStream());
+            this.out = new PrintWriter(socket.getOutputStream(), true);
+            this.in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            this.connected = true;
         } catch (IOException e) {
-            e.printStackTrace();
-            JOptionPane.showMessageDialog(gameView, "Could not connect to the server.", "Connection Error", JOptionPane.ERROR_MESSAGE);
-            System.exit(1);
+            handleConnectionError(e);
         }
     }
 
-    private void handleCellClick(Pair<Integer, Integer> pixelPos) {
-        sendActionToServer(pixelPos);
+    private void sendClickAction(Pair<Integer, Integer> pixelPos) {
+        if (!connected) return;
+        //simple object for serializate
+        ClickData clickData = new ClickData(pixelPos.getValue0(), pixelPos.getValue1());
+        String jsonAction = gson.toJson(clickData);
+        out.println(jsonAction);
     }
 
-    private void sendActionToServer(Object action) {
-        try {
-            oos.writeObject(action);
-            oos.flush();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+    private void sendEndTurnAction() {
+        if (!connected) return;
+        out.println("END_TURN");
     }
 
     @Override
     public void run() {
         try {
             // First, send the player name to the server
-            oos.writeObject(playerName);
+            out.println(playerName);
 
-            // The first object from the server should be the board positions
-            ArrayList<Pair<Integer, Integer>> boardPositions = (ArrayList<Pair<Integer, Integer>>) ois.readObject();
-            SwingUtilities.invokeLater(() -> {
-                gameView.setHexagonPositions(boardPositions);
-                gameView.repaint();
-            });
-
-
-            while (true) {
-                // Subsequent objects can be GameState or ServerMessage
-                Object receivedObject = ois.readObject();
-
-                if (receivedObject instanceof GameState) {
-                    GameState gameState = (GameState) receivedObject;
-                    // UI updates must run on the Event Dispatch Thread
-                    SwingUtilities.invokeLater(() -> updateView(gameState));
-                } else if (receivedObject instanceof ServerMessage) {
-                    ServerMessage serverMessage = (ServerMessage) receivedObject;
-                    // Show the message in a popup
-                    SwingUtilities.invokeLater(() ->
-                        JOptionPane.showMessageDialog(gameView, serverMessage.getPayload(), "Server Notification", JOptionPane.INFORMATION_MESSAGE)
-                    );
-                    // If a player disconnects, the game might be over, so we can break the loop.
-                    if (serverMessage.getType() == ServerMessage.MessageType.PLAYER_DISCONNECTED) {
-                        break;
+            String serverLine;
+            while ((serverLine = in.readLine()) != null) {
+                final String line = serverLine;
+                SwingUtilities.invokeLater(() -> {
+                    try {
+                        GameStateDTO gameStateDTO = gson.fromJson(line, GameStateDTO.class);
+                        gameView.updateView(gameStateDTO);
+                    } catch (JsonSyntaxException e) {
+                        System.err.println("Received non-JSON or malformed JSON message: " + line);
                     }
-                }
+                });
             }
-        } catch (IOException | ClassNotFoundException e) {
-            System.out.println("Disconnected from server.");
-            SwingUtilities.invokeLater(() ->
-                JOptionPane.showMessageDialog(gameView, "Disconnected from the server.", "Connection Lost", JOptionPane.ERROR_MESSAGE)
-            );
-        } finally {
-            try {
-                socket.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+        } catch (IOException e) {
+        System.out.println("Disconnected from server.");
+        SwingUtilities.invokeLater(() -> {
+            JOptionPane.showMessageDialog(gameView, "Disconnected from the server.", "Connection Lost", JOptionPane.ERROR_MESSAGE);
+            gameView.dispose();
+        });
+    } finally {
+            connected = false;
+            closeConnection();
         }
     }
 
-    private void updateView(GameState state) {
-        // Check for winner and handle end of game flow
-        if (state.winner != null && !state.winner.isEmpty()) {
-            gameView.showWinnerPopup(state.winner);
-            gameView.dispose(); // Close the game window
-            Controller.MainMenuController.main(null); // Relaunch the main menu
-            return; // Stop further processing of this state
-        }
-
-        gameView.updateTurnLabel(state.currentPlayer);
-        gameView.updatePieces(state.piecePositions, state.pieceColors);
-        gameView.showValidMoves(state.selectedPixel, state.validMovePixels);
-        gameView.setEndTurnButtonEnabled(state.isJumpSequence);
-        gameView.repaint();
+    private void handleConnectionError(IOException e) {
+        e.printStackTrace();
+        SwingUtilities.invokeLater(() ->
+                JOptionPane.showMessageDialog(gameView, "Could not connect to the server: " + e.getMessage(),
+                        "Connection Error", JOptionPane.ERROR_MESSAGE)
+        );
     }
 
-    // A simple class to encapsulate game state for serialization
-    public static class GameState implements Serializable {
-        public ArrayList<Pair<Integer, Integer>> piecePositions;
-        public HashMap<Pair<Integer, Integer>, String> pieceColors;
-        public Pair<Integer, Integer> selectedPixel;
-        public ArrayList<Pair<Integer, Integer>> validMovePixels;
-        public String currentPlayer;
-        public String winner;
-        public boolean isJumpSequence;
+    private void closeConnection() {
+        try {
+            if (socket != null) socket.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    //serialize data clicks
+        private record ClickData(int value0, int value1) {
     }
 }
