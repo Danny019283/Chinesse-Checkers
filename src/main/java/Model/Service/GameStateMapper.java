@@ -38,9 +38,14 @@ public class GameStateMapper {
                 ? gameState.getCurrentPlayer().getName()
                 : "Waiting...";
 
+        String currentPlayerColor = (gameState.getCurrentPlayer() != null)
+                ? gameState.getCurrentPlayer().getColor()
+                : "Waiting...";
+
         String winnerName = (gameState.getWinner() != null)
                 ? gameState.getWinner().getName()
                 : null;
+        ArrayList<Player> players = gameState.getPlayers();
 
         return new GameStateDTO(
                 pixelBoard,
@@ -48,7 +53,9 @@ public class GameStateMapper {
                 validMoves,
                 currentPlayerName,
                 winnerName,
-                gameState.isJumpSequence()
+                gameState.isJumpSequence(),
+                currentPlayerColor,
+                players
         );
     }
 
@@ -59,7 +66,9 @@ public class GameStateMapper {
                 new HashSet<>(),
                 "Waiting for players...",
                 null,
-                false
+                false,
+                "Waiting for players...",
+                new ArrayList<>()
         );
     }
 }

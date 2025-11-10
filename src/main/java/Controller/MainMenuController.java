@@ -25,6 +25,7 @@ public class MainMenuController {
     private void handleStartGame() {
         try {
             String playerName = mainMenuView.getPlayerName();
+            int playerCount = mainMenuView.getSelectedPlayerCount();
             String serverIP = mainMenuView.getServerIP();
             int serverPort = mainMenuView.getServerPort();
 
@@ -45,7 +46,7 @@ public class MainMenuController {
             mainMenuView.closeMenu();
 
             // Start the network game connection
-            startGameConnection(playerName, serverIP, serverPort);
+            startGameConnection(playerName, playerCount, serverIP, serverPort);
 
         } catch (Exception ex) {
             mainMenuView.showMessage("Error al iniciar el juego: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
@@ -60,12 +61,12 @@ public class MainMenuController {
         }
     }
 
-    private void startGameConnection(String playerName, String serverIP, int serverPort) {
+    private void startGameConnection(String playerName, int playerCount, String serverIP, int serverPort) {
         // Create the GameView instance. It will be managed by the Client thread.
         GameView gameView = new GameView();
 
         // Create and start the client network thread, passing the view to it.
-        Client client = new Client(playerName, serverIP, serverPort, gameView);
+        Client client = new Client(playerName, playerCount, serverIP, serverPort, gameView);
         client.start();
     }
 

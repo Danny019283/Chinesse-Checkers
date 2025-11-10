@@ -1,6 +1,7 @@
 package Controller;
 
 import Model.Entities.GameState;
+import Model.Entities.GameStats;
 import Model.Entities.Player;
 import Model.Entities.Coords;
 import Model.Service.GameStateListener;
@@ -28,8 +29,6 @@ public class GameController implements GameStateListener {
 
     public void addPlayer(Player player) {
         gameService.addPlayer(player);
-        // La notificación ahora es manejada por onGameStateUpdated,
-        // que se activará desde GameService cuando sea necesario.
     }
 
     public void startGame() {
@@ -43,12 +42,7 @@ public class GameController implements GameStateListener {
     }
 
     public void handleCellClick(int pixelX, int pixelY) {
-        // Convertir coordenadas de píxeles a coordenadas hexagonales
         Coords hexCoords = BoardService.pixelToPointyHex(pixelX, pixelY);
-        if (gameService.getGameState().getBoard().contains(hexCoords)) {
-            System.out.println("Le coordenada existe");
-        }
-        System.out.println("Le coordenada no existe");
         gameService.turn(hexCoords);
     }
 
@@ -57,7 +51,6 @@ public class GameController implements GameStateListener {
     }
 
     public GameStateDTO getGameViewDTO() {
-        // Usar el mapper para convertir el estado del juego a DTO
         return GameStateMapper.toDTO(gameService.getGameState());
     }
 
@@ -76,13 +69,11 @@ public class GameController implements GameStateListener {
 
     @Override
     public void onGameStateUpdated(GameState newState) {
-        // Notificar al Server que el estado cambió para que haga broadcast
         if (updateCallback != null) {
             updateCallback.onStateUpdated();
         }
     }
 
-    // Interfaz para que el Server reciba notificaciones
     public interface GameStateUpdateCallback {
         void onStateUpdated();
     }

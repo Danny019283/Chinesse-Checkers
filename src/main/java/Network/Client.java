@@ -21,13 +21,16 @@ public class Client extends Thread {
     private BufferedReader in;
     private final GameView gameView;
     private final String playerName;
+    private final int playerCount;
     private final Gson gson;
     private boolean connected = false;
 
-    public Client(String playerName, String host, int port, GameView gameView) {
+    public Client(String playerName, int playerCount, String host, int port, GameView gameView) {
         this.playerName = playerName;
+        this.playerCount = playerCount;
         this.gameView = gameView;
         this.gson = new GsonBuilder().create();
+
 
         // Set up listeners on the view to send actions to this client
         this.gameView.setCellClickListener(this::sendClickAction);
@@ -59,28 +62,45 @@ public class Client extends Thread {
     @Override
     public void run() {
         try {
-            // First, send the player name to the server
+            // 1. Enviar nombre y cantidad de jugadores
             out.println(playerName);
+            out.println(playerCount);
 
             String serverLine;
             while ((serverLine = in.readLine()) != null) {
                 final String line = serverLine;
+
+                // Manejo de mensajes simples (no JSON)
+                if (line.startsWith("COLOR_ASSIGNED:")) {
+                    String color = line.split(":")[1];
+                    SwingUtilities.invokeLater(() -> gameView.setPlayerColor(color));
+                    continue;
+                }
+
+                if ("ESPERANDO_JUGADORES".equals(line)) {
+                    SwingUtilities.invokeLater(() -> gameView.showWaitingMessage());
+                    continue;
+                }
+
+                // Resto es JSON del estado del juego
                 SwingUtilities.invokeLater(() -> {
                     try {
                         GameStateDTO gameStateDTO = gson.fromJson(line, GameStateDTO.class);
-                        gameView.updateView(gameStateDTO);
+                        if (gameStateDTO != null) {
+                            gameView.updateView(gameStateDTO);
+                        }
                     } catch (JsonSyntaxException e) {
                         System.err.println("Received non-JSON or malformed JSON message: " + line);
                     }
                 });
             }
         } catch (IOException e) {
-        System.out.println("Disconnected from server.");
-        SwingUtilities.invokeLater(() -> {
-            JOptionPane.showMessageDialog(gameView, "Disconnected from the server.", "Connection Lost", JOptionPane.ERROR_MESSAGE);
-            gameView.dispose();
-        });
-    } finally {
+            System.out.println("Disconnected from server.");
+            SwingUtilities.invokeLater(() -> {
+                JOptionPane.showMessageDialog(gameView, "Disconnected from the server.", "Connection Lost", JOptionPane.ERROR_MESSAGE);
+                gameView.dispose();
+            });
+        } finally {
             connected = false;
             closeConnection();
         }
@@ -89,8 +109,10 @@ public class Client extends Thread {
     private void handleConnectionError(IOException e) {
         e.printStackTrace();
         SwingUtilities.invokeLater(() ->
-                JOptionPane.showMessageDialog(gameView, "Could not connect to the server: " + e.getMessage(),
-                        "Connection Error", JOptionPane.ERROR_MESSAGE)
+                JOptionPane.showMessageDialog(gameView,
+                        "Could not connect to the server: " + e.getMessage(),
+                        "Connection Error",
+                        JOptionPane.ERROR_MESSAGE)
         );
     }
 

@@ -15,17 +15,16 @@ public class GameStatsService {
         return instance;
     }
 
-    public boolean insertStats(GameStats gameStats) {
+    public void insertStats(GameStats gameStats) {
         if (gameStats == null) {
-            return false;
+            return;
         }
         if (gameStats.getNamePlayers().length == 0) {
-            return false;
+            return;
         }
-        int gameId = gameStatsDAO.countGameStats();
+        int gameId = gameStatsDAO.countGameStats() + 1;
         gameStats.setGameId(gameId);
         gameStatsDAO.insertGameStat(gameStats);
-        return true;
     }
 
     public boolean updateStats(GameStats gameStats) {

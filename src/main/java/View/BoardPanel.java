@@ -17,15 +17,15 @@ class BoardPanel extends JPanel {
     private CellClickListener cellClickListener;
 
     // Data for drawing, provided by GameView
-    private ArrayList<PixelCell> boardCells = new ArrayList<>(); // Celdas del tablero
-    private ArrayList<PixelCell> piecePositions = new ArrayList<>(); // Posiciones de las piezas
+    private ArrayList<PixelCell> boardCells = new ArrayList<>();
+    private ArrayList<PixelCell> piecePositions = new ArrayList<>();
     private Coords selectedPixel = null;
     private Set<Coords> validMovePixels = Set.of();
 
     private final Color boardBgColor = new Color(0xFFFFFF);
     private final Color hexColor = new Color(0xE0E0E0);
     private final Color hexBorderColor = new Color(0x000000);
-    private final Color validMoveColor = new Color(0x92F196);
+    private final Color validMoveColor = new Color(0xB0E5B4);
     private final Color selectedHexColor = new Color(0x6EC3E5);
 
     public BoardPanel() {
@@ -67,22 +67,19 @@ class BoardPanel extends JPanel {
         int centerX = PANEL_WIDTH / 2;
         int centerY = PANEL_HEIGHT / 2;
 
-        // 1. Dibujar todas las celdas del tablero
         for (PixelCell cell : boardCells) {
             int x = centerX + cell.getCoords().getX();
             int y = centerY + cell.getCoords().getY();
-            HexagonDrawer.draw(g2d, x, y, HEX_SIZE, hexColor, true); // Relleno
-            HexagonDrawer.draw(g2d, x, y, HEX_SIZE, hexBorderColor, false); // Borde
+            HexagonDrawer.draw(g2d, x, y, HEX_SIZE, hexColor, true);
+            HexagonDrawer.draw(g2d, x, y, HEX_SIZE, hexBorderColor, false);
         }
 
-        // 2. Dibujar los resaltados de movimientos válidos
         for (Coords move : validMovePixels) {
             int x = centerX + move.getX();
             int y = centerY + move.getY();
             HexagonDrawer.draw(g2d, x, y, HEX_SIZE, validMoveColor, true);
         }
 
-        // 3. Dibujar la pieza seleccionada (si existe)
         if (selectedPixel != null) {
             g2d.setStroke(new BasicStroke(3));
             int x = centerX + selectedPixel.getX();
@@ -90,7 +87,6 @@ class BoardPanel extends JPanel {
             HexagonDrawer.draw(g2d, x, y, HEX_SIZE, selectedHexColor, false);
         }
 
-        // 4. Dibujar las piezas encima de todo
         for (PixelCell pixelCell : piecePositions) {
             if (pixelCell.getPiece() != null) {
                 int x = centerX + pixelCell.getCoords().getX();

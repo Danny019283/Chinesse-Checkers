@@ -9,7 +9,7 @@ import javax.swing.*;
 import java.util.ArrayList;
 
 public class GameStatsController {
-    private final GameStatsService serviceGameStats;
+    final GameStatsService serviceGameStats;
     private GameStatsView statsView;
 
     public GameStatsController() {

@@ -89,7 +89,7 @@ public class GameStatsView extends JFrame {
         DefaultTableModel model = new DefaultTableModel(columnNames, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
-                return false; // Hacer la tabla no editable
+                return false;
             }
         };
 
@@ -107,10 +107,10 @@ public class GameStatsView extends JFrame {
 
     }
 
-    // Método para actualizar la tabla con datos de GameStats
+    // update all tables
     public void updateTable(ArrayList<GameStats> statsList) {
         DefaultTableModel model = (DefaultTableModel) tblStats.getModel();
-        model.setRowCount(0); // Limpiar tabla
+        model.setRowCount(0);
 
         for (GameStats stats : statsList) {
             String players = String.join(", ", stats.getNamePlayers());
@@ -123,7 +123,6 @@ public class GameStatsView extends JFrame {
         }
     }
 
-    // Método para obtener el ID del juego seleccionado
     public int getSelectedGameId() {
         int selectedRow = tblStats.getSelectedRow();
         if (selectedRow != -1) {
@@ -132,7 +131,6 @@ public class GameStatsView extends JFrame {
         return -1;
     }
 
-    // Método para obtener la fila seleccionada completa
     public Object[] getSelectedGameData() {
         int selectedRow = tblStats.getSelectedRow();
         if (selectedRow != -1) {
@@ -145,7 +143,6 @@ public class GameStatsView extends JFrame {
         return null;
     }
 
-    // Métodos para los listeners
     public void addSearchListener(ActionListener accion) {
         btnSearch.addActionListener(accion);
     }
@@ -154,7 +151,6 @@ public class GameStatsView extends JFrame {
         tblStats.getSelectionModel().addListSelectionListener(accion);
     }
 
-    // Métodos para obtener datos de la UI
     public String getSearchText() {
         return txtSearch.getText().trim();
     }
@@ -163,7 +159,6 @@ public class GameStatsView extends JFrame {
         return tblStats;
     }
 
-    // Método para mostrar detalles del juego seleccionado
     public void showGameDetails(GameStats stats) {
         if (stats != null) {
             String message = String.format(
@@ -177,7 +172,6 @@ public class GameStatsView extends JFrame {
         }
     }
 
-    // Método para mostrar detalles del juego seleccionado desde la tabla
     public void showSelectedGameDetails() {
         Object[] selectedData = getSelectedGameData();
         if (selectedData != null) {
@@ -192,13 +186,11 @@ public class GameStatsView extends JFrame {
         }
     }
 
-    // Método para cerrar la ventana
     public void closeView() {
         dispose();
         instance = null;
     }
 
-    // Método estático para probar la vista
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
             GameStatsView statsView = new GameStatsView();

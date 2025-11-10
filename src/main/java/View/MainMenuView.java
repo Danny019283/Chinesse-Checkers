@@ -11,6 +11,7 @@ public class MainMenuView extends JFrame {
     private final JTextField txtName = new JTextField(15);
     private final JTextField txtIP = new JTextField(15);
     private final JTextField txtPort = new JTextField(6);
+    private final JComboBox<Integer> cmbPlayerCount = new JComboBox<>(new Integer[]{2, 3, 4, 5, 6});
 
     private final Dimension buttonSize = new Dimension(300, 60);
     private final Font buttonFont = new Font("Segoe UI", Font.BOLD, 14);
@@ -74,7 +75,7 @@ public class MainMenuView extends JFrame {
 
         // title font
         Font labelFont = new Font("Segoe UI", Font.BOLD, 12);
-
+        //name panel
         JPanel namePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 8));
         namePanel.setBackground(new Color(0xF5F5F5));
         JLabel lblName = new JLabel("Tu Nombre:");
@@ -84,7 +85,17 @@ public class MainMenuView extends JFrame {
         txtName.setPreferredSize(new Dimension(120, 25));
         namePanel.add(lblName);
         namePanel.add(txtName);
-
+        //num players panel
+        JPanel playerCountPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 8));
+        playerCountPanel.setBackground(new Color(0xF5F5F5));
+        JLabel lblPlayerCount = new JLabel("Jugadores:");
+        lblPlayerCount.setFont(labelFont);
+        lblPlayerCount.setForeground(Color.BLACK);
+        cmbPlayerCount.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        cmbPlayerCount.setPreferredSize(new Dimension(80, 25));
+        playerCountPanel.add(lblPlayerCount);
+        playerCountPanel.add(cmbPlayerCount);
+        //ip panel
         JPanel ipPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 8));
         ipPanel.setBackground(new Color(0xF5F5F5));
         JLabel lblIP = new JLabel("IP del Servidor:");
@@ -95,7 +106,7 @@ public class MainMenuView extends JFrame {
         txtIP.setPreferredSize(new Dimension(120, 25));
         ipPanel.add(lblIP);
         ipPanel.add(txtIP);
-
+        //port panel
         JPanel portPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 8));
         portPanel.setBackground(new Color(0xF5F5F5));
         JLabel lblPort = new JLabel("Puerto:");
@@ -108,8 +119,10 @@ public class MainMenuView extends JFrame {
         portPanel.add(txtPort);
 
         serverPanel.add(namePanel);
+        serverPanel.add(playerCountPanel);
         serverPanel.add(ipPanel);
         serverPanel.add(portPanel);
+
 
         centerPanel.add(buttonPanel, BorderLayout.CENTER);
         centerPanel.add(serverPanel, BorderLayout.EAST);
@@ -150,6 +163,10 @@ public class MainMenuView extends JFrame {
 
     public String getServerIP() {
         return txtIP.getText().trim();
+    }
+
+    public int getSelectedPlayerCount() {
+        return (Integer) cmbPlayerCount.getSelectedItem();
     }
 
     public int getServerPort() {

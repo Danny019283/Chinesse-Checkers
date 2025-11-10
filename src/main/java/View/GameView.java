@@ -14,6 +14,7 @@ public class GameView extends JFrame {
     private BoardPanel pnlBoard;
     private final JButton btnEndTurn = new JButton("Finalizar Turno");
     private final JLabel lblTurn = new JLabel("Turno de: JUGADOR");
+    private final JLabel lblColor = new JLabel("Color: --");
 
     public GameView() {
         setTitle("Chinese Checkers");
@@ -34,11 +35,13 @@ public class GameView extends JFrame {
         controlPanel.setBackground(new Color(0xF5F5F5));
 
         lblTurn.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        lblColor.setFont(new Font("Segoe UI", Font.BOLD, 16));
         btnEndTurn.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         btnEndTurn.setBackground(new Color(0x6200EE));
         btnEndTurn.setForeground(Color.WHITE);
 
         controlPanel.add(lblTurn);
+        controlPanel.add(lblColor);
         controlPanel.add(btnEndTurn);
         add(controlPanel, BorderLayout.SOUTH);
     }
@@ -53,6 +56,7 @@ public class GameView extends JFrame {
 
     private void updateUI(GameStateDTO state) {
         lblTurn.setText("Turno de: " + state.getCurrentPlayerName());
+        lblColor.setText("Color: " + state.getCurrentPlayerColor());
         btnEndTurn.setEnabled(state.isJumpSequence());
     }
 
@@ -102,6 +106,14 @@ public class GameView extends JFrame {
 
     public void setCellClickListener(BoardPanel.CellClickListener listener) {
         pnlBoard.setCellClickListener(listener);
+    }
+
+    public void setPlayerColor(String color) {
+        lblColor.setText("Color: " + color);
+    }
+
+    public void showWaitingMessage() {
+        lblTurn.setText("Esperando jugadores...");
     }
 
 }

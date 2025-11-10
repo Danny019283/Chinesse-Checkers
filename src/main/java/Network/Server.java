@@ -1,6 +1,7 @@
 package Network;
 
 import Controller.GameController;
+import Controller.GameStatsController;
 import Model.Entities.Player;
 import DTO.GameStateDTO;
 import com.google.gson.Gson;
@@ -13,6 +14,7 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -20,6 +22,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public class Server implements GameController.GameStateUpdateCallback {
 
     private final GameController gameController;
+    private final GameStatsController statsController = new GameStatsController();
     private final List<ClientHandler> clients = new CopyOnWriteArrayList<>();
     private final Gson gson;
 
@@ -56,6 +59,14 @@ public class Server implements GameController.GameStateUpdateCallback {
             System.err.println("Cannot broadcast a null game state.");
             return;
         }
+        if (gameStateDTO.getWinnerName() != null && !gameStateDTO.getWinnerName().isEmpty()) {
+            String[] players = gameStateDTO.getPlayers().stream().map(Player::getName).toArray(String[]::new);
+            statsController.addStatsGame(
+                    gameStateDTO.getWinnerName(),
+                    gameStateDTO.getCurrentPlayerColor(),
+                    players
+            );
+        }
         System.out.println(gameStateDTO.getPiecePositions().toString());
         String jsonState = gson.toJson(gameStateDTO);
         for (ClientHandler client : clients) {
@@ -88,9 +99,24 @@ public class Server implements GameController.GameStateUpdateCallback {
         }
     }
 
-    private synchronized void addPlayer(String playerName, ClientHandler clientHandler) {
+    private int targetPlayerCount = 0;
+
+    private synchronized void addPlayer(String playerName, int playerCount, ClientHandler clientHandler) {
         if (gameController.getPlayers().size() >= 6) {
             System.out.println("Game is full, rejecting player: " + playerName);
+            clientHandler.close();
+            return;
+        }
+        //if is first joined player set max player in the game
+        if (gameController.getPlayers().isEmpty()) {
+            targetPlayerCount = playerCount;
+            System.out.println("Partida configurada para " + targetPlayerCount + " jugadores.");
+        }
+
+        // Verify players limit
+        if (gameController.getPlayers().size() >= targetPlayerCount) {
+            System.out.println("Game is full (max " + targetPlayerCount + "), rejecting player: " + playerName);
+            clientHandler.sendMessage("GAME_FULL");
             clientHandler.close();
             return;
         }
@@ -98,7 +124,15 @@ public class Server implements GameController.GameStateUpdateCallback {
         Player newPlayer = new Player(playerName, "");
         clientHandler.setPlayer(newPlayer);
         gameController.addPlayer(newPlayer);
-        System.out.println(playerName + " was added to the game.");
+        //show assigned color
+        clientHandler.sendMessage("COLOR_ASSIGNED:" + newPlayer.getColor());
+        //if all players are joined, start
+        if (gameController.getPlayers().size() == targetPlayerCount) {
+            System.out.println("Todos los jugadores conectados. Creando juego...");
+            gameController.createNewGame(new ArrayList<>(gameController.getPlayers()));
+        } else {
+            clientHandler.sendMessage("ESPERANDO_JUGADORES");
+        }
     }
 
     private void removeClient(ClientHandler client) {
@@ -134,8 +168,10 @@ public class Server implements GameController.GameStateUpdateCallback {
                 in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
                 String name = in.readLine();
+                int playerCount = Integer.parseInt(in.readLine()); // ← Agregá esta línea
+
                 if (name != null && !name.trim().isEmpty()) {
-                    server.addPlayer(name.trim(), this);
+                    server.addPlayer(name.trim(), playerCount, this); // ← Ahora con 3 parámetros
                 } else {
                     System.err.println("Client connected without a name. Closing connection.");
                     close();

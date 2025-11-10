@@ -52,18 +52,18 @@ public class GameService {
 
 
         this.gameState = new GameState(
-                board,                          // board
-                players.getFirst(),             // currentPlayer
-                players,                        // players
-                0,                              // curentTurnIndex
-                new HashMap<>(),                // currentValidMoves - IMPORTANTE!
-                null,                           // winner
-                null,                           // selectedPiece
-                false,                          // isJumpSequence
-                null                           // lastMoveDirection
+                board,
+                players.getFirst(),
+                players,
+                0,
+                new HashMap<>(),
+                null,
+                null,
+                false,
+                null
         );
 
-        // Notificar que el juego se creó
+        //Notify game has been created
         if (listener != null) {
             listener.onGameStateUpdated(gameState);
         }
@@ -78,9 +78,13 @@ public class GameService {
         String color = addColor.get(currentPlayers);
         player.setColor(color);
         gameState.getPlayers().add(player);
-        System.out.println("Player added: " + player.getName() + " as " + color);
-        if (gameState.getPlayers().size() >= 2 && gameState.getBoard().getCells().isEmpty()) {
-            createNewGame(new ArrayList<>(gameState.getPlayers()));
+
+        //add player pieces if board is already created
+        if (!gameState.getBoard().getCells().isEmpty()) {
+            BoardService.setupPiecesForOnePlayer(gameState.getBoard(), color);
+            if (listener != null) {
+                listener.onGameStateUpdated(gameState);
+            }
         }
     }
 
@@ -139,10 +143,8 @@ public class GameService {
             return;
         }
         if (BoardService.isPlayerPiece(gameState.getBoard(), selectedCell, gameState.getCurrentPlayer().getColor())) {
-            System.out.println("se encontro una pieza");
             selectPiece(selectedCell);
         } else {
-            System.out.println("no se encontro una pieza");
             resetSelection();
         }
     }
